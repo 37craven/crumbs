@@ -1,11 +1,18 @@
-import { useState } from 'react'
-import type { ReactNode } from 'react'
+import { useRef, useState } from 'react'
+import type { ChangeEvent, ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
+import Avatar from '../components/Avatar'
 import { ApiError } from '../lib/api'
 import { useAuth } from '../hooks/useAuth'
-import { changePassword, updateProfile } from '../lib/profile'
+import { resizeToSquare } from '../lib/image'
+import {
+  changePassword,
+  removeAvatar,
+  updateProfile,
+  uploadAvatar,
+} from '../lib/profile'
 import { passwordChangeSchema, profileSchema } from '../lib/schemas'
 import type { PasswordChangeInput, ProfileInput, User } from '../lib/schemas'
 
@@ -257,6 +264,83 @@ function PasswordForm() {
   )
 }
 
+function PhotoSection({ user }: { user: User }) {
+  const { updateUser } = useAuth()
+  const inputRef = useRef<HTMLInputElement>(null)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [done, setDone] = useState<string | null>(null)
+
+  const run = async (task: () => Promise<User>, success: string) => {
+    setBusy(true)
+    setError(null)
+    setDone(null)
+    try {
+      updateUser(await task())
+      setDone(success)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Something went wrong. Try again.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const handleFile = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+    if (file) {
+      void run(async () => uploadAvatar(await resizeToSquare(file)), 'Photo saved.')
+    }
+  }
+
+  return (
+    <section aria-labelledby="photo-heading" className="space-y-4">
+      <h2 id="photo-heading" className="text-left">
+        Profile photo
+      </h2>
+
+      <div className="flex items-center gap-4 text-left">
+        <Avatar user={user} className="size-24 shrink-0 text-4xl" />
+        <div className="space-y-2">
+          <div className="flex flex-wrap gap-3">
+            <button
+              type="button"
+              onClick={() => inputRef.current?.click()}
+              disabled={busy}
+              className={buttonClass}
+            >
+              {busy ? 'Saving…' : user.avatarUrl ? 'Change photo' : 'Upload photo'}
+            </button>
+            {user.avatarUrl && (
+              <button
+                type="button"
+                onClick={() => void run(removeAvatar, 'Photo removed.')}
+                disabled={busy}
+                className="rounded-md border border-border px-4 py-2 font-heading text-text-h disabled:opacity-50"
+              >
+                Remove photo
+              </button>
+            )}
+          </div>
+          <p className="text-sm text-text">
+            JPEG, PNG or WebP. Cropped to a square and saved right away.
+          </p>
+        </div>
+      </div>
+
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        onChange={handleFile}
+        className="hidden"
+      />
+
+      <Feedback error={error} success={done} />
+    </section>
+  )
+}
+
 export default function EditProfile() {
   const { user } = useAuth()
 
@@ -273,6 +357,7 @@ export default function EditProfile() {
         <h1 className="text-4xl font-heading text-text-h">Edit profile</h1>
       </div>
 
+      <PhotoSection user={user} />
       <DetailsForm user={user} />
       <PasswordForm />
     </section>

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
+import Avatar from '../components/Avatar'
 import { ApiError } from '../lib/api'
 import { useAuth } from '../hooks/useAuth'
 
@@ -50,20 +51,7 @@ export default function Profile() {
       </div>
 
       <header className="flex flex-col items-center gap-3">
-        {user.avatarUrl ? (
-          <img
-            src={user.avatarUrl}
-            alt=""
-            className="size-28 rounded-full border border-border object-cover"
-          />
-        ) : (
-          <div
-            aria-hidden="true"
-            className="grid size-28 select-none place-items-center rounded-full border border-accent-border bg-accent-bg font-heading text-5xl leading-none text-accent"
-          >
-            {displayName.charAt(0).toUpperCase()}
-          </div>
-        )}
+        <Avatar user={user} className="size-28 text-5xl" />
 
         {/* index.css styles bare h1 outside Tailwind's layers, so size and margin need ! to win. */}
         <h1
