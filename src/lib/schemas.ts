@@ -14,6 +14,11 @@ export const userSchema = z.object({
   username: z.string(),
   email: z.string(),
   createdAt: z.string(),
+  name: z.string().nullish(),
+  avatarUrl: z.string().nullish(),
+  friendsCount: z.number().int().nonnegative().optional(),
+  crumbsCount: z.number().int().nonnegative().optional(),
+  collectionsCount: z.number().int().nonnegative().optional(),
 })
 
 export type User = z.infer<typeof userSchema>
@@ -49,3 +54,24 @@ export const crumbSchema = z.object({
 })
 
 export type CrumbInput = z.infer<typeof crumbSchema>
+
+export const profileSchema = z.object({
+  name: z.string().trim().max(50, 'Name must be at most 50 characters'),
+  username: usernameSchema,
+  email: z.string().trim().toLowerCase().email('Enter a valid email address'),
+})
+
+export type ProfileInput = z.infer<typeof profileSchema>
+
+export const passwordChangeSchema = z
+  .object({
+    currentPassword: z.string().min(1, 'Enter your current password'),
+    newPassword: z.string().min(8, 'Password must be at least 8 characters'),
+    confirmPassword: z.string(),
+  })
+  .refine((v) => v.newPassword === v.confirmPassword, {
+    message: 'Passwords do not match',
+    path: ['confirmPassword'],
+  })
+
+export type PasswordChangeInput = z.infer<typeof passwordChangeSchema>
