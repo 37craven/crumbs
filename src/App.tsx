@@ -1,4 +1,4 @@
-import { Route, Routes } from 'react-router-dom'
+import { Route, Routes, useLocation } from 'react-router-dom'
 import RequireAuth from './components/RequireAuth'
 import RedirectIfAuthed from './components/RedirectIfAuthed'
 import AddEvent from './pages/AddEvent'
@@ -14,8 +14,17 @@ import Register from './pages/Register'
 import Search from './pages/Search'
 
 export default function App() {
+  const { pathname } = useLocation()
+  const fullWidth = pathname === '/crumbs'
+
   return (
-    <main className="mx-auto min-h-svh w-full max-w-3xl px-6 py-12">
+    <main
+      className={
+        fullWidth
+          ? 'min-h-svh w-full py-12'
+          : 'mx-auto min-h-svh w-full max-w-3xl px-6 py-12'
+      }
+    >
       <Routes>
         <Route path="/" element={<Home />} />
         <Route
