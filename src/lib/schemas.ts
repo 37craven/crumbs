@@ -87,3 +87,12 @@ export const friendSchema = z.object({
 })
 
 export type Friend = z.infer<typeof friendSchema>
+
+export const crumbRecordSchema = z.object({
+  id: z.string(),
+  imageUrl: z.string(),
+  caption: z.string(),
+  createdAt: z.string(),
+})
+
+export type Crumb = z.infer<typeof crumbRecordSchema>

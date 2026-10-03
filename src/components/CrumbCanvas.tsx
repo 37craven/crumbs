@@ -1,60 +1,76 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { KeyboardEvent, PointerEvent, ReactNode } from 'react'
+import type { KeyboardEvent, PointerEvent } from 'react'
+import { crumbLabel, crumbSrc } from '../lib/crumbs'
+import type { Crumb } from '../lib/schemas'
 
-export type Crumb = { id: string; imageUrl?: string }
-
-type Drag = { id: number; x: number; y: number; time: number; vx: number; vy: number }
+type Drag = {
+  id: number
+  x: number
+  y: number
+  time: number
+  vx: number
+  vy: number
+  moved: number
+}
 
 const NO_CRUMBS: Crumb[] = []
 
 // Measured from the design: square tiles in straight columns, every second column
 // sitting a quarter tile lower, with a slightly wider gap between rows than columns.
-// The pattern repeats forever, so the canvas has no edges and empty squares are placeholders.
-const COLUMN_SHIFT = [0, 0.25]
-const BLOCK_COLS = 4
-const MIN_SLOTS = 8
+// Only crumbs are drawn; there are no empty placeholder squares.
+const BLOCK_COLS = 3
+// How much of the photos must stay on screen, so they can never be dragged out of reach.
+const MARGIN = 120
 
 function tileFor(width: number) {
-  return width > 0 && width < 520 ? 160 : 240
+  return width > 0 && width < 520 ? 200 : 340
 }
 
 function metrics(tile: number) {
   const gapX = Math.round(tile * 0.06)
   const gapY = Math.round(tile * 0.09)
-  return {
-    gapX,
-    gapY,
-    stepX: tile + gapX,
-    stepY: tile + gapY,
-    shift: tile * COLUMN_SHIFT[1],
+  return { stepX: tile + gapX, stepY: tile + gapY, shift: tile * 0.25, gapX, gapY }
+}
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(Math.max(value, min), max)
+}
+
+// Where the nth crumb goes: left to right, row by row, in a block of three columns.
+function place(index: number, tile: number) {
+  const { stepX, stepY, shift } = metrics(tile)
+  const col = index % BLOCK_COLS
+  const row = Math.floor(index / BLOCK_COLS)
+  return { left: col * stepX, top: (col % 2 === 1 ? shift : 0) + row * stepY }
+}
+
+// The size of the block the crumbs take up.
+function blockSize(count: number, tile: number) {
+  let width = 0
+  let height = 0
+  for (let i = 0; i < Math.max(1, count); i++) {
+    const { left, top } = place(i, tile)
+    width = Math.max(width, left + tile)
+    height = Math.max(height, top + tile)
   }
+  return { width, height }
 }
-
-function mod(n: number, m: number) {
-  return ((n % m) + m) % m
-}
-
-// Where the crumbs themselves go: left to right, row by row, in a block of four columns.
-function buildLayout(total: number) {
-  const byCell = new Map<string, number>()
-  for (let i = 0; i < total; i++) {
-    byCell.set(`${i % BLOCK_COLS}:${Math.floor(i / BLOCK_COLS)}`, i)
-  }
-  return { total, byCell }
-}
-
-type Layout = ReturnType<typeof buildLayout>
 
 // Camera position that puts the crumbs in the middle of the viewport.
-function homeCamera(layout: Layout, tile: number, view: { w: number; h: number }) {
-  const { gapX, gapY, stepX, stepY, shift } = metrics(tile)
-  const rows = Math.ceil(layout.total / BLOCK_COLS)
-  const width = BLOCK_COLS * stepX - gapX
-  const height = rows * stepY - gapY + shift
-  return { x: (view.w - width) / 2, y: (view.h - height) / 2 }
+function homeCamera(count: number, tile: number, view: { w: number; h: number }) {
+  const block = blockSize(count, tile)
+  return { x: (view.w - block.width) / 2, y: (view.h - block.height) / 2 }
 }
 
-export default function CrumbCanvas({ crumbs = NO_CRUMBS }: { crumbs?: Crumb[] }) {
+export default function CrumbCanvas({
+  crumbs = NO_CRUMBS,
+  emptyMessage,
+  onSelect,
+}: {
+  crumbs?: Crumb[]
+  emptyMessage?: string
+  onSelect?: (crumb: Crumb) => void
+}) {
   const viewportRef = useRef<HTMLDivElement>(null)
   const drag = useRef<Drag | null>(null)
   const frame = useRef(0)
@@ -62,54 +78,60 @@ export default function CrumbCanvas({ crumbs = NO_CRUMBS }: { crumbs?: Crumb[] }
   const [camera, setCamera] = useState({ x: 0, y: 0 })
   const [view, setView] = useState({ w: 0, h: 0 })
 
-  const layout = useMemo(() => buildLayout(Math.max(crumbs.length, MIN_SLOTS)), [crumbs.length])
   const tile = tileFor(view.w)
-  const { stepX, stepY, shift } = metrics(tile)
+  const byId = useMemo(() => new Map(crumbs.map((crumb) => [crumb.id, crumb])), [crumbs])
+  const block = useMemo(() => blockSize(crumbs.length, tile), [crumbs.length, tile])
 
-  // Only the squares near the viewport are drawn. The group is anchored to a whole cell,
-  // so panning only moves one element until the view crosses into the next cell.
-  const col0 = Math.floor(-camera.x / stepX) - 1
-  const row0 = Math.floor(-camera.y / stepY) - 1
-  const cols = Math.ceil(view.w / stepX) + 3
-  const rows = Math.ceil(view.h / stepY) + 3
+  const minX = MARGIN - block.width
+  const maxX = view.w - MARGIN
+  const minY = MARGIN - block.height
+  const maxY = view.h - MARGIN
 
-  const tiles = useMemo(() => {
-    const items: ReactNode[] = []
-    for (let c = col0; c < col0 + cols; c++) {
-      const drop = mod(c, COLUMN_SHIFT.length) === 0 ? 0 : shift
-      for (let r = row0; r < row0 + rows; r++) {
-        const index = layout.byCell.get(`${c}:${r}`)
-        const crumb = index === undefined ? undefined : crumbs[index]
-        items.push(
+  // Images load lazily, so tiles far off screen cost almost nothing.
+  const tiles = useMemo(
+    () =>
+      crumbs.map((crumb, index) => {
+        const { left, top } = place(index, tile)
+        return (
           <li
-            key={`${c}:${r}`}
-            aria-hidden={crumb?.imageUrl ? undefined : true}
-            className="absolute overflow-hidden bg-border"
-            style={{
-              left: (c - col0) * stepX,
-              top: drop + (r - row0) * stepY,
-              width: tile,
-              height: tile,
-            }}
+            key={crumb.id}
+            data-crumb-id={crumb.id}
+            className="absolute overflow-hidden"
+            style={{ left, top, width: tile, height: tile }}
           >
-            {crumb?.imageUrl && (
+            <button
+              type="button"
+              aria-label={crumbLabel(crumb) || 'Open crumb'}
+              // Pointer taps are handled by the canvas; this covers the keyboard (detail 0).
+              onClick={(event) => {
+                if (event.detail === 0) onSelect?.(crumb)
+              }}
+              className="block size-full cursor-pointer focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
+            >
               <img
-                src={crumb.imageUrl}
-                alt="Crumb"
+                src={crumbSrc(crumb.imageUrl)}
+                alt=""
                 draggable={false}
+                loading="lazy"
+                decoding="async"
                 className="size-full object-cover"
               />
-            )}
-          </li>,
+            </button>
+          </li>
         )
-      }
-    }
-    return items
-  }, [col0, row0, cols, rows, stepX, stepY, shift, tile, layout, crumbs])
+      }),
+    [crumbs, tile, onSelect],
+  )
 
-  const panBy = useCallback((dx: number, dy: number) => {
-    setCamera((current) => ({ x: current.x + dx, y: current.y + dy }))
-  }, [])
+  const panBy = useCallback(
+    (dx: number, dy: number) => {
+      setCamera((current) => ({
+        x: clamp(current.x + dx, minX, maxX),
+        y: clamp(current.y + dy, minY, maxY),
+      }))
+    },
+    [minX, maxX, minY, maxY],
+  )
 
   const stopGlide = useCallback(() => cancelAnimationFrame(frame.current), [])
 
@@ -144,19 +166,25 @@ export default function CrumbCanvas({ crumbs = NO_CRUMBS }: { crumbs?: Crumb[] }
       setView(next)
       if (!centered.current) {
         centered.current = true
-        setCamera(homeCamera(layout, tileFor(next.w), next))
+        setCamera(homeCamera(crumbs.length, tileFor(next.w), next))
       }
     })
     observer.observe(viewport)
     return () => observer.disconnect()
-  }, [layout])
+  }, [crumbs.length])
 
   // The canvas is as wide as the browser window, which includes the scrollbar's width.
   // Clipping the page sideways stops that sliver from creating a horizontal scrollbar.
+  // The page frame's side borders would show through the canvas, so hide them here only.
   useEffect(() => {
-    const root = document.documentElement
-    root.classList.add('overflow-x-clip')
-    return () => root.classList.remove('overflow-x-clip')
+    const page = document.documentElement
+    const frame = document.getElementById('root')
+    page.classList.add('overflow-x-clip')
+    if (frame) frame.style.borderInlineColor = 'transparent'
+    return () => {
+      page.classList.remove('overflow-x-clip')
+      if (frame) frame.style.borderInlineColor = ''
+    }
   }, [])
 
   useEffect(() => {
@@ -188,6 +216,7 @@ export default function CrumbCanvas({ crumbs = NO_CRUMBS }: { crumbs?: Crumb[] }
       time: event.timeStamp,
       vx: 0,
       vy: 0,
+      moved: 0,
     }
   }
 
@@ -200,6 +229,7 @@ export default function CrumbCanvas({ crumbs = NO_CRUMBS }: { crumbs?: Crumb[] }
     const dt = Math.max(1, event.timeStamp - current.time)
     panBy(dx, dy)
 
+    current.moved += Math.abs(dx) + Math.abs(dy)
     current.vx = 0.7 * current.vx + 0.3 * (dx / dt)
     current.vy = 0.7 * current.vy + 0.3 * (dy / dt)
     current.x = event.clientX
@@ -212,6 +242,18 @@ export default function CrumbCanvas({ crumbs = NO_CRUMBS }: { crumbs?: Crumb[] }
     if (!current || current.id !== event.pointerId) return
     drag.current = null
 
+    // A press that barely moved is a tap: open the crumb under the finger.
+    if (event.type === 'pointerup' && current.moved < 6) {
+      const id = document
+        .elementFromPoint(event.clientX, event.clientY)
+        ?.closest<HTMLElement>('[data-crumb-id]')?.dataset.crumbId
+      const crumb = id ? byId.get(id) : undefined
+      if (crumb) {
+        onSelect?.(crumb)
+        return
+      }
+    }
+
     const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
     const stillMoving = event.timeStamp - current.time < 80
     if (!reduceMotion && stillMoving && Math.hypot(current.vx, current.vy) > 0.05) {
@@ -223,7 +265,7 @@ export default function CrumbCanvas({ crumbs = NO_CRUMBS }: { crumbs?: Crumb[] }
     if (event.key === 'Home') {
       event.preventDefault()
       stopGlide()
-      setCamera(homeCamera(layout, tile, view))
+      setCamera(homeCamera(crumbs.length, tile, view))
       return
     }
 
@@ -256,16 +298,20 @@ export default function CrumbCanvas({ crumbs = NO_CRUMBS }: { crumbs?: Crumb[] }
           onPointerUp={endDrag}
           onPointerCancel={endDrag}
           onKeyDown={onKeyDown}
-          className="relative h-[75dvh] min-h-80 w-full cursor-grab touch-none overflow-hidden border-y border-border select-none focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent active:cursor-grabbing"
+          className="relative h-[75dvh] min-h-80 w-full cursor-grab touch-none overflow-hidden select-none focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent active:cursor-grabbing"
         >
           <ul
             className="absolute top-0 left-0 will-change-transform"
-            style={{
-              transform: `translate3d(${camera.x + col0 * stepX}px, ${camera.y + row0 * stepY}px, 0)`,
-            }}
+            style={{ transform: `translate3d(${camera.x}px, ${camera.y}px, 0)` }}
           >
             {tiles}
           </ul>
+
+          {crumbs.length === 0 && emptyMessage && (
+            <p className="pointer-events-none absolute inset-0 grid place-items-center px-6 text-center text-text">
+              {emptyMessage}
+            </p>
+          )}
         </div>
       </div>
 

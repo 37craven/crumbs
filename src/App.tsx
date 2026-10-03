@@ -54,7 +54,14 @@ export default function App() {
         <Route path="/collections" element={<Collections />} />
         <Route path="/search" element={<Search />} />
         <Route path="/addevent" element={<AddEvent />} />
-        <Route path="/crumbs" element={<Crumbs />} />
+        <Route
+          path="/crumbs"
+          element={
+            <RequireAuth>
+              <Crumbs />
+            </RequireAuth>
+          }
+        />
         <Route
           path="/profile"
           element={
