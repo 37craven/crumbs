@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import Avatar from '../components/Avatar'
 import { ApiError } from '../lib/api'
 import { useAuth } from '../hooks/useAuth'
+import { fullName } from '../lib/user'
 
 const focusRing =
   'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent'
@@ -16,7 +17,7 @@ export default function Profile() {
     return null
   }
 
-  const displayName = user.name?.trim() || user.username
+  const displayName = fullName(user) || user.username
 
   const stats = [
     { label: 'Friends', value: user.friendsCount },

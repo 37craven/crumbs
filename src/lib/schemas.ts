@@ -14,7 +14,8 @@ export const userSchema = z.object({
   username: z.string(),
   email: z.string(),
   createdAt: z.string(),
-  name: z.string().nullish(),
+  firstName: z.string().nullish(),
+  lastName: z.string().nullish(),
   avatarUrl: z.string().nullish(),
   friendsCount: z.number().int().nonnegative().optional(),
   crumbsCount: z.number().int().nonnegative().optional(),
@@ -56,7 +57,8 @@ export const crumbSchema = z.object({
 export type CrumbInput = z.infer<typeof crumbSchema>
 
 export const profileSchema = z.object({
-  name: z.string().trim().max(50, 'Name must be at most 50 characters'),
+  firstName: z.string().trim().max(50, 'First name must be at most 50 characters'),
+  lastName: z.string().trim().max(50, 'Last name must be at most 50 characters'),
   username: usernameSchema,
   email: z.string().trim().toLowerCase().email('Enter a valid email address'),
 })

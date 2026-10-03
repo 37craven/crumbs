@@ -70,7 +70,8 @@ function DetailsForm({ user }: { user: User }) {
   const [saved, setSaved] = useState<string | null>(null)
 
   const toValues = (u: User): ProfileInput => ({
-    name: u.name ?? '',
+    firstName: u.firstName ?? '',
+    lastName: u.lastName ?? '',
     username: u.username,
     email: u.email,
   })
@@ -97,7 +98,12 @@ function DetailsForm({ user }: { user: User }) {
     } catch (error) {
       if (error instanceof ApiError) {
         for (const [field, messages] of Object.entries(error.fields)) {
-          if (field === 'name' || field === 'username' || field === 'email') {
+          if (
+            field === 'firstName' ||
+            field === 'lastName' ||
+            field === 'username' ||
+            field === 'email'
+          ) {
             setError(field, { message: messages[0] })
           }
         }
@@ -121,17 +127,31 @@ function DetailsForm({ user }: { user: User }) {
         Your details
       </h2>
 
-      <Field id="name" label="Name" error={errors.name?.message}>
-        <input
-          id="name"
-          type="text"
-          autoComplete="name"
-          {...register('name')}
-          aria-invalid={Boolean(errors.name)}
-          aria-describedby={errors.name ? 'name-error' : undefined}
-          className={inputClass}
-        />
-      </Field>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field id="firstName" label="First name" error={errors.firstName?.message}>
+          <input
+            id="firstName"
+            type="text"
+            autoComplete="given-name"
+            {...register('firstName')}
+            aria-invalid={Boolean(errors.firstName)}
+            aria-describedby={errors.firstName ? 'firstName-error' : undefined}
+            className={inputClass}
+          />
+        </Field>
+
+        <Field id="lastName" label="Last name" error={errors.lastName?.message}>
+          <input
+            id="lastName"
+            type="text"
+            autoComplete="family-name"
+            {...register('lastName')}
+            aria-invalid={Boolean(errors.lastName)}
+            aria-describedby={errors.lastName ? 'lastName-error' : undefined}
+            className={inputClass}
+          />
+        </Field>
+      </div>
 
       <Field id="username" label="Username" error={errors.username?.message}>
         <input

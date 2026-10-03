@@ -1,5 +1,6 @@
 import { avatarSrc } from '../lib/profile'
 import type { User } from '../lib/schemas'
+import { fullName } from '../lib/user'
 
 export default function Avatar({
   user,
@@ -18,7 +19,7 @@ export default function Avatar({
     )
   }
 
-  const initial = (user.name?.trim() || user.username).charAt(0).toUpperCase()
+  const initial = (fullName(user) || user.username).charAt(0).toUpperCase()
 
   return (
     <div
