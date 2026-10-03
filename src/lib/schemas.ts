@@ -77,3 +77,13 @@ export const passwordChangeSchema = z
   })
 
 export type PasswordChangeInput = z.infer<typeof passwordChangeSchema>
+
+export const friendSchema = z.object({
+  id: z.string(),
+  username: z.string(),
+  firstName: z.string().nullish(),
+  lastName: z.string().nullish(),
+  avatarUrl: z.string().nullish(),
+})
+
+export type Friend = z.infer<typeof friendSchema>

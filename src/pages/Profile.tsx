@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import Avatar from '../components/Avatar'
+import FriendsDialog from '../components/FriendsDialog'
 import { ApiError } from '../lib/api'
 import { useAuth } from '../hooks/useAuth'
 import { fullName } from '../lib/user'
@@ -12,6 +13,7 @@ export default function Profile() {
   const { user, logout } = useAuth()
   const [signingOut, setSigningOut] = useState(false)
   const [signOutError, setSignOutError] = useState<string | null>(null)
+  const [friendsOpen, setFriendsOpen] = useState(false)
 
   if (!user) {
     return null
@@ -20,7 +22,7 @@ export default function Profile() {
   const displayName = fullName(user) || user.username
 
   const stats = [
-    { label: 'Friends', value: user.friendsCount },
+    { label: 'Friends', value: user.friendsCount, onClick: () => setFriendsOpen(true) },
     { label: 'Crumbs', value: user.crumbsCount },
     { label: 'Collections', value: user.collectionsCount },
   ]
@@ -73,14 +75,33 @@ export default function Profile() {
         </Link>
       </header>
 
-      <dl className="grid grid-cols-3 divide-x divide-border rounded-lg border border-border text-center">
-        {stats.map(({ label, value }) => (
-          <div key={label} className="flex flex-col-reverse px-2 py-4">
-            <dt className="text-sm text-text">{label}</dt>
-            <dd className="font-heading text-2xl text-text-h">{value ?? '–'}</dd>
-          </div>
-        ))}
-      </dl>
+      <ul className="grid grid-cols-3 divide-x divide-border overflow-hidden rounded-lg border border-border text-center">
+        {stats.map(({ label, value, onClick }) => {
+          const content = (
+            <>
+              <span className="text-sm text-text">{label}</span>
+              <span className="font-heading text-2xl text-text-h">{value ?? '–'}</span>
+            </>
+          )
+          const cell = 'flex w-full flex-col-reverse items-center px-2 py-4'
+          return (
+            <li key={label}>
+              {onClick ? (
+                <button
+                  type="button"
+                  onClick={onClick}
+                  aria-haspopup="dialog"
+                  className={`${cell} cursor-pointer hover:bg-accent-bg focus-visible:-outline-offset-2 focus-visible:outline-2 focus-visible:outline-accent`}
+                >
+                  {content}
+                </button>
+              ) : (
+                <div className={cell}>{content}</div>
+              )}
+            </li>
+          )
+        })}
+      </ul>
 
       <div className="flex flex-col items-center gap-3 border-t border-border pt-6">
         <button
@@ -100,6 +121,8 @@ export default function Profile() {
           )}
         </div>
       </div>
+
+      <FriendsDialog open={friendsOpen} onClose={() => setFriendsOpen(false)} />
     </section>
   )
 }

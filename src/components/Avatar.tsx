@@ -1,12 +1,12 @@
 import { avatarSrc } from '../lib/profile'
-import type { User } from '../lib/schemas'
 import { fullName } from '../lib/user'
+import type { NamedUser } from '../lib/user'
 
 export default function Avatar({
   user,
   className,
 }: {
-  user: User
+  user: NamedUser
   className: string
 }) {
   if (user.avatarUrl) {
