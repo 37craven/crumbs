@@ -33,7 +33,7 @@ export default function Crumbs() {
   }, [])
 
   return (
-    <section className="flex flex-col gap-6">
+    <section className="flex flex-col gap-6 pb-24">
       <h1 className="px-6 text-4xl font-heading text-text-h">Crumbs</h1>
 
       {loadError && (

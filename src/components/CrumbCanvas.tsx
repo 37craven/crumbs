@@ -18,12 +18,28 @@ const NO_CRUMBS: Crumb[] = []
 // Measured from the design: square tiles in straight columns, every second column
 // sitting a quarter tile lower, with a slightly wider gap between rows than columns.
 // Only crumbs are drawn; there are no empty placeholder squares.
-const BLOCK_COLS = 3
 // How much of the photos must stay on screen, so they can never be dragged out of reach.
 const MARGIN = 120
+const PAD = 16
+const MAX_TILE = 340
+const MIN_TILE = 120
 
+function clamp(value: number, min: number, max: number) {
+  return Math.min(Math.max(value, min), max)
+}
+
+// Two columns on phones, three everywhere else.
+function colsFor(width: number) {
+  return width > 0 && width < 560 ? 2 : 3
+}
+
+// Tiles shrink on narrow screens so every column fits across the width.
+// Column gaps are 6% of a tile, so n tiles plus (n - 1) gaps fill the width minus padding.
 function tileFor(width: number) {
-  return width > 0 && width < 520 ? 200 : 340
+  if (width <= 0) return MAX_TILE
+  const cols = colsFor(width)
+  const fit = Math.floor((width - PAD * 2) / (cols + 0.06 * (cols - 1)))
+  return clamp(fit, MIN_TILE, MAX_TILE)
 }
 
 function metrics(tile: number) {
@@ -32,24 +48,20 @@ function metrics(tile: number) {
   return { stepX: tile + gapX, stepY: tile + gapY, shift: tile * 0.25, gapX, gapY }
 }
 
-function clamp(value: number, min: number, max: number) {
-  return Math.min(Math.max(value, min), max)
-}
-
-// Where the nth crumb goes: left to right, row by row, in a block of three columns.
-function place(index: number, tile: number) {
+// Where the nth crumb goes: left to right, row by row.
+function place(index: number, tile: number, cols: number) {
   const { stepX, stepY, shift } = metrics(tile)
-  const col = index % BLOCK_COLS
-  const row = Math.floor(index / BLOCK_COLS)
+  const col = index % cols
+  const row = Math.floor(index / cols)
   return { left: col * stepX, top: (col % 2 === 1 ? shift : 0) + row * stepY }
 }
 
 // The size of the block the crumbs take up.
-function blockSize(count: number, tile: number) {
+function blockSize(count: number, tile: number, cols: number) {
   let width = 0
   let height = 0
   for (let i = 0; i < Math.max(1, count); i++) {
-    const { left, top } = place(i, tile)
+    const { left, top } = place(i, tile, cols)
     width = Math.max(width, left + tile)
     height = Math.max(height, top + tile)
   }
@@ -57,8 +69,13 @@ function blockSize(count: number, tile: number) {
 }
 
 // Camera position that puts the crumbs in the middle of the viewport.
-function homeCamera(count: number, tile: number, view: { w: number; h: number }) {
-  const block = blockSize(count, tile)
+function homeCamera(
+  count: number,
+  tile: number,
+  cols: number,
+  view: { w: number; h: number },
+) {
+  const block = blockSize(count, tile, cols)
   return { x: (view.w - block.width) / 2, y: (view.h - block.height) / 2 }
 }
 
@@ -74,13 +91,14 @@ export default function CrumbCanvas({
   const viewportRef = useRef<HTMLDivElement>(null)
   const drag = useRef<Drag | null>(null)
   const frame = useRef(0)
-  const centered = useRef(false)
+  const layoutKey = useRef('')
   const [camera, setCamera] = useState({ x: 0, y: 0 })
   const [view, setView] = useState({ w: 0, h: 0 })
 
   const tile = tileFor(view.w)
+  const cols = colsFor(view.w)
   const byId = useMemo(() => new Map(crumbs.map((crumb) => [crumb.id, crumb])), [crumbs])
-  const block = useMemo(() => blockSize(crumbs.length, tile), [crumbs.length, tile])
+  const block = useMemo(() => blockSize(crumbs.length, tile, cols), [crumbs.length, tile, cols])
 
   const minX = MARGIN - block.width
   const maxX = view.w - MARGIN
@@ -91,7 +109,7 @@ export default function CrumbCanvas({
   const tiles = useMemo(
     () =>
       crumbs.map((crumb, index) => {
-        const { left, top } = place(index, tile)
+        const { left, top } = place(index, tile, cols)
         return (
           <li
             key={crumb.id}
@@ -120,7 +138,7 @@ export default function CrumbCanvas({
           </li>
         )
       }),
-    [crumbs, tile, onSelect],
+    [crumbs, tile, cols, onSelect],
   )
 
   const panBy = useCallback(
@@ -164,9 +182,11 @@ export default function CrumbCanvas({
     const observer = new ResizeObserver(() => {
       const next = { w: viewport.clientWidth, h: viewport.clientHeight }
       setView(next)
-      if (!centered.current) {
-        centered.current = true
-        setCamera(homeCamera(crumbs.length, tileFor(next.w), next))
+      // Start centered, and center again whenever the layout reflows (rotating a phone, resizing).
+      const key = `${tileFor(next.w)}:${colsFor(next.w)}`
+      if (key !== layoutKey.current) {
+        layoutKey.current = key
+        setCamera(homeCamera(crumbs.length, tileFor(next.w), colsFor(next.w), next))
       }
     })
     observer.observe(viewport)
@@ -261,11 +281,15 @@ export default function CrumbCanvas({
     }
   }
 
+  const recenter = () => {
+    stopGlide()
+    setCamera(homeCamera(crumbs.length, tile, cols, view))
+  }
+
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     if (event.key === 'Home') {
       event.preventDefault()
-      stopGlide()
-      setCamera(homeCamera(crumbs.length, tile, view))
+      recenter()
       return
     }
 
@@ -315,9 +339,24 @@ export default function CrumbCanvas({
         </div>
       </div>
 
-      <p id="crumb-canvas-hint" className="px-6 text-sm text-text">
-        Drag to move around. Arrow keys work too, and Home goes back to the start.
-      </p>
+      <div className="flex items-center justify-between gap-4 px-6">
+        <p id="crumb-canvas-hint" className="text-left text-sm text-text">
+          Drag to move around.
+          <span className="hidden [@media(hover:hover)]:inline">
+            {' '}
+            Arrow keys work too, and Home goes back to the start.
+          </span>
+        </p>
+        {crumbs.length > 0 && (
+          <button
+            type="button"
+            onClick={recenter}
+            className="shrink-0 rounded-md border border-border px-3 py-1.5 font-heading text-sm text-text-h"
+          >
+            Recenter
+          </button>
+        )}
+      </div>
     </div>
   )
 }
