@@ -1,9 +1,13 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import CrumbCanvas from '../components/CrumbCanvas'
 import CrumbUploader from '../components/CrumbUploader'
 import CrumbViewer from '../components/CrumbViewer'
 import { fetchCrumbs } from '../lib/crumbs'
 import type { Crumb } from '../lib/schemas'
+
+const linkClass =
+  'text-accent underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent'
 
 export default function Crumbs() {
   const [crumbs, setCrumbs] = useState<Crumb[]>([])
@@ -34,6 +38,15 @@ export default function Crumbs() {
 
   return (
     <section className="flex flex-col gap-6 pb-24">
+      <nav aria-label="Page" className="flex items-center justify-between px-6">
+        <Link to="/" className={linkClass}>
+          Home
+        </Link>
+        <Link to="/profile" className={linkClass}>
+          Profile
+        </Link>
+      </nav>
+
       <h1 className="px-6 text-4xl font-heading text-text-h">Crumbs</h1>
 
       {loadError && (

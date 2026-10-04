@@ -4,8 +4,12 @@ import { uploadCrumb } from '../lib/crumbs'
 import { resizeToFit } from '../lib/image'
 import type { Crumb } from '../lib/schemas'
 
+// The collections the user can pick from. Whoever builds the Collections page supplies these.
+export type CollectionOption = { id: string; name: string }
+
 const MAX_BATCH = 10
 const CAPTION_MAX = 60
+const NO_COLLECTIONS: CollectionOption[] = []
 
 const inputClass =
   'w-full rounded-md border border-border bg-bg px-3 py-2 font-sans text-text outline-none focus-visible:border-accent'
@@ -25,8 +29,10 @@ function release(items: Item[]) {
 
 export default function CrumbUploader({
   onUploaded,
+  collections = NO_COLLECTIONS,
 }: {
   onUploaded: (crumb: Crumb) => void
+  collections?: CollectionOption[]
 }) {
   const inputRef = useRef<HTMLInputElement>(null)
   const dialogRef = useRef<HTMLDialogElement>(null)
@@ -34,6 +40,7 @@ export default function CrumbUploader({
   const [items, setItems] = useState<Item[]>([])
   const [busy, setBusy] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
+  const [choice, setChoice] = useState('')
 
   const releaseAll = useCallback(() => release(itemsRef.current), [])
 
@@ -70,6 +77,8 @@ export default function CrumbUploader({
         error: null,
       })),
     )
+
+    setChoice('')
   }
 
   const update = (id: string, changes: Partial<Item>) => {
@@ -83,17 +92,20 @@ export default function CrumbUploader({
     release(items)
     setItems([])
     setNotice(null)
+    setChoice('')
   }
 
   const upload = async () => {
     setBusy(true)
+    const collectionId = choice || null
+
     const finished = new Set<string>()
 
     for (const item of items) {
       update(item.id, { status: 'uploading', error: null })
       try {
         const image = await resizeToFit(item.file)
-        onUploaded(await uploadCrumb(image, item.caption))
+        onUploaded(await uploadCrumb(image, item.caption, collectionId))
         finished.add(item.id)
       } catch (error) {
         update(item.id, {
@@ -193,6 +205,29 @@ export default function CrumbUploader({
         </ul>
 
         <div className="space-y-3 border-t border-border px-5 py-4">
+          <div className="space-y-2">
+            <label htmlFor="upload-collection" className="block font-heading text-text-h">
+              Add to a collection (optional)
+            </label>
+            <select
+              id="upload-collection"
+              value={choice}
+              disabled={busy}
+              onChange={(event) => setChoice(event.target.value)}
+              className={inputClass}
+            >
+              <option value="">No collection</option>
+              {collections.map((collection) => (
+                <option key={collection.id} value={collection.id}>
+                  {collection.name}
+                </option>
+              ))}
+            </select>
+            {collections.length === 0 && (
+              <p className="text-sm text-text">You have no collections yet.</p>
+            )}
+          </div>
+
           <p className="text-sm text-text">
             Photos are cropped to a square in the grid. With no caption, the upload date
             is shown instead.

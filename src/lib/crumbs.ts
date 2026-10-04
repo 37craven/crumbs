@@ -22,10 +22,17 @@ export async function fetchCrumbs(): Promise<Crumb[]> {
   return z.object({ crumbs: z.array(crumbRecordSchema) }).parse(data).crumbs
 }
 
-export async function uploadCrumb(image: Blob, caption: string): Promise<Crumb> {
+export async function uploadCrumb(
+  image: Blob,
+  caption: string,
+  collectionId: string | null = null,
+): Promise<Crumb> {
   const trimmed = caption.trim()
   const { data } = await api.post('/api/crumbs', image, {
-    params: trimmed ? { caption: trimmed } : undefined,
+    params: {
+      ...(trimmed ? { caption: trimmed } : {}),
+      ...(collectionId ? { collection: collectionId } : {}),
+    },
     headers: { 'Content-Type': image.type },
     timeout: 60_000,
   })

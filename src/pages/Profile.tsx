@@ -1,19 +1,47 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import Avatar from '../components/Avatar'
+import CrumbViewer from '../components/CrumbViewer'
 import FriendsDialog from '../components/FriendsDialog'
 import { ApiError } from '../lib/api'
+import { crumbLabel, crumbSrc, fetchCrumbs } from '../lib/crumbs'
+import type { Crumb } from '../lib/schemas'
 import { useAuth } from '../hooks/useAuth'
 import { fullName } from '../lib/user'
 
 const focusRing =
   'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent'
 
+const linkClass = `text-accent underline underline-offset-4 ${focusRing}`
+
+const PREVIEW_COUNT = 6
+
+// No collections data exists in the app yet. Replace this with the real list
+// (each item needs an id and a name) once the Collections page provides it.
+const collections: { id: string; name: string }[] = []
+
 export default function Profile() {
   const { user, logout } = useAuth()
   const [signingOut, setSigningOut] = useState(false)
   const [signOutError, setSignOutError] = useState<string | null>(null)
   const [friendsOpen, setFriendsOpen] = useState(false)
+  const [crumbs, setCrumbs] = useState<Crumb[] | null>(null)
+  const [crumbsFailed, setCrumbsFailed] = useState(false)
+  const [selected, setSelected] = useState<Crumb | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    fetchCrumbs()
+      .then((list) => {
+        if (!cancelled) setCrumbs(list)
+      })
+      .catch(() => {
+        if (!cancelled) setCrumbsFailed(true)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   if (!user) {
     return null
@@ -23,8 +51,8 @@ export default function Profile() {
 
   const stats = [
     { label: 'Friends', value: user.friendsCount, onClick: () => setFriendsOpen(true) },
-    { label: 'Crumbs', value: user.crumbsCount },
-    { label: 'Collections', value: user.collectionsCount },
+    { label: 'Crumbs', value: crumbs ? crumbs.length : user.crumbsCount, to: '/crumbs' },
+    { label: 'Collections', value: user.collectionsCount, to: '/collections' },
   ]
 
   const handleSignOut = async () => {
@@ -76,7 +104,7 @@ export default function Profile() {
       </header>
 
       <ul className="grid grid-cols-3 divide-x divide-border overflow-hidden rounded-lg border border-border text-center">
-        {stats.map(({ label, value, onClick }) => {
+        {stats.map(({ label, value, onClick, to }) => {
           const content = (
             <>
               <span className="text-sm text-text">{label}</span>
@@ -84,6 +112,7 @@ export default function Profile() {
             </>
           )
           const cell = 'flex w-full flex-col-reverse items-center px-2 py-4'
+          const clickable = `${cell} cursor-pointer hover:bg-accent-bg focus-visible:-outline-offset-2 focus-visible:outline-2 focus-visible:outline-accent`
           return (
             <li key={label}>
               {onClick ? (
@@ -91,10 +120,14 @@ export default function Profile() {
                   type="button"
                   onClick={onClick}
                   aria-haspopup="dialog"
-                  className={`${cell} cursor-pointer hover:bg-accent-bg focus-visible:-outline-offset-2 focus-visible:outline-2 focus-visible:outline-accent`}
+                  className={clickable}
                 >
                   {content}
                 </button>
+              ) : to ? (
+                <Link to={to} className={clickable}>
+                  {content}
+                </Link>
               ) : (
                 <div className={cell}>{content}</div>
               )}
@@ -102,6 +135,80 @@ export default function Profile() {
           )
         })}
       </ul>
+
+      <section aria-labelledby="profile-crumbs-heading" className="space-y-3 text-left">
+        <div className="flex items-baseline justify-between gap-4">
+          <h2 id="profile-crumbs-heading" className="my-0!">
+            Crumbs
+          </h2>
+          <Link to="/crumbs" className={linkClass}>
+            View all
+          </Link>
+        </div>
+
+        {crumbsFailed ? (
+          <p className="text-text">Couldn't load your crumbs.</p>
+        ) : crumbs === null ? (
+          <p role="status" className="text-text">
+            Loading crumbs…
+          </p>
+        ) : crumbs.length === 0 ? (
+          <p className="text-text">
+            No crumbs yet.{' '}
+            <Link to="/crumbs" className={linkClass}>
+              Add your first
+            </Link>
+          </p>
+        ) : (
+          <ul className="grid grid-cols-3 gap-2">
+            {crumbs.slice(0, PREVIEW_COUNT).map((crumb) => (
+              <li key={crumb.id}>
+                <button
+                  type="button"
+                  onClick={() => setSelected(crumb)}
+                  aria-label={crumbLabel(crumb) || 'Open crumb'}
+                  className={`block aspect-square w-full cursor-pointer overflow-hidden ${focusRing}`}
+                >
+                  <img
+                    src={crumbSrc(crumb.imageUrl)}
+                    alt=""
+                    loading="lazy"
+                    className="size-full object-cover"
+                  />
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section aria-labelledby="profile-collections-heading" className="space-y-3 text-left">
+        <div className="flex items-baseline justify-between gap-4">
+          <h2 id="profile-collections-heading" className="my-0!">
+            Collections
+          </h2>
+          <Link to="/collections" className={linkClass}>
+            View all
+          </Link>
+        </div>
+
+        {collections.length === 0 ? (
+          <p className="text-text">No collections yet.</p>
+        ) : (
+          <ul className="divide-y divide-border rounded-lg border border-border">
+            {collections.map((collection) => (
+              <li key={collection.id}>
+                <Link
+                  to="/collections"
+                  className={`block px-4 py-3 font-heading text-text-h hover:bg-accent-bg ${focusRing}`}
+                >
+                  {collection.name}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
 
       <div className="flex flex-col items-center gap-3 border-t border-border pt-6">
         <button
@@ -123,6 +230,7 @@ export default function Profile() {
       </div>
 
       <FriendsDialog open={friendsOpen} onClose={() => setFriendsOpen(false)} />
+      <CrumbViewer crumb={selected} onClose={() => setSelected(null)} />
     </section>
   )
 }
