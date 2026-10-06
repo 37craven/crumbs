@@ -5,18 +5,21 @@ import CrumbViewer from '../components/CrumbViewer'
 import FriendsDialog from '../components/FriendsDialog'
 import { ApiError } from '../lib/api'
 import { crumbLabel, crumbSrc, fetchCrumbs } from '../lib/crumbs'
-import { fetchCollections } from '../lib/collections'
 import type { Crumb } from '../lib/schemas'
-import type { CollectionOption } from '../lib/collections'
 import { useAuth } from '../hooks/useAuth'
 import { fullName } from '../lib/user'
 
 const focusRing =
   'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent'
 
-const linkClass = `text-accent underline underline-offset-4 ${focusRing}`
+const linkClass = `text-sm font-semibold text-accent no-underline hover:underline ${focusRing}`
+const card = 'rounded-3xl border border-border bg-white shadow-sm'
 
 const PREVIEW_COUNT = 6
+
+// No collections data exists in the app yet. Replace this with the real list
+// (each item needs an id and a name) once the Collections page provides it.
+const collections: { id: string; name: string }[] = []
 
 export default function Profile() {
   const { user, logout } = useAuth()
@@ -26,21 +29,6 @@ export default function Profile() {
   const [crumbs, setCrumbs] = useState<Crumb[] | null>(null)
   const [crumbsFailed, setCrumbsFailed] = useState(false)
   const [selected, setSelected] = useState<Crumb | null>(null)
-  const [collections, setCollections] = useState<CollectionOption[] | null>(null)
-
-  useEffect(() => {
-    let cancelled = false
-    fetchCollections()
-      .then((list) => {
-        if (!cancelled) setCollections(list)
-      })
-      .catch(() => {
-        if (!cancelled) setCollections([])
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -64,8 +52,8 @@ export default function Profile() {
 
   const stats = [
     { label: 'Friends', value: user.friendsCount, onClick: () => setFriendsOpen(true) },
-    { label: 'Crumbs', value: crumbs ? crumbs.length : 0, to: '/crumbs' },
-    { label: 'Collections', value: collections ? collections.length : 0, to: '/collections' },
+    { label: 'Crumbs', value: crumbs ? crumbs.length : user.crumbsCount, to: '/crumbs' },
+    { label: 'Collections', value: user.collectionsCount, to: '/collections' },
   ]
 
   const handleSignOut = async () => {
@@ -84,17 +72,14 @@ export default function Profile() {
   }
 
   return (
-    <section aria-labelledby="profile-heading" className="space-y-8">
+    <section aria-labelledby="profile-heading" className="mx-auto max-w-xl space-y-6">
       <div className="text-left">
-        <Link
-          to="/"
-          className={`text-accent underline underline-offset-4 ${focusRing}`}
-        >
-          Back to home
+        <Link to="/" className="text-sm text-accent no-underline hover:underline">
+          ← Home
         </Link>
       </div>
 
-      <header className="flex flex-col items-center gap-3">
+      <header className={`${card} flex flex-col items-center gap-3 px-6 py-8`}>
         <Avatar user={user} className="size-28 text-5xl" />
 
         {/* index.css styles bare h1 outside Tailwind's layers, so size and margin need ! to win. */}
@@ -110,18 +95,18 @@ export default function Profile() {
 
         <Link
           to="/edit-profile"
-          className={`mt-1 rounded-md bg-accent px-4 py-2 font-heading text-bg ${focusRing}`}
+          className="btn btn-primary mt-1 px-5 py-2 no-underline"
         >
           Edit profile
         </Link>
       </header>
 
-      <ul className="grid grid-cols-3 divide-x divide-border overflow-hidden rounded-lg border border-border text-center">
+      <ul className={`${card} grid grid-cols-3 divide-x divide-border overflow-hidden text-center`}>
         {stats.map(({ label, value, onClick, to }) => {
           const content = (
             <>
-              <span className="text-sm text-text">{label}</span>
-              <span className="font-heading text-2xl text-text-h">{value ?? '–'}</span>
+              <span className="text-xs font-semibold tracking-wide text-text uppercase">{label}</span>
+              <span className="text-2xl font-extrabold text-text-h">{value ?? '–'}</span>
             </>
           )
           const cell = 'flex w-full flex-col-reverse items-center px-2 py-4'
@@ -149,7 +134,7 @@ export default function Profile() {
         })}
       </ul>
 
-      <section aria-labelledby="profile-crumbs-heading" className="space-y-3 text-left">
+      <section aria-labelledby="profile-crumbs-heading" className={`${card} space-y-3 p-5 text-left`}>
         <div className="flex items-baseline justify-between gap-4">
           <h2 id="profile-crumbs-heading" className="my-0!">
             Crumbs
@@ -180,7 +165,7 @@ export default function Profile() {
                   type="button"
                   onClick={() => setSelected(crumb)}
                   aria-label={crumbLabel(crumb) || 'Open crumb'}
-                  className={`block aspect-square w-full cursor-pointer overflow-hidden ${focusRing}`}
+                  className={`block aspect-square w-full cursor-pointer overflow-hidden rounded-2xl shadow-sm transition-transform hover:-translate-y-0.5 ${focusRing}`}
                 >
                   <img
                     src={crumbSrc(crumb.imageUrl)}
@@ -195,7 +180,7 @@ export default function Profile() {
         )}
       </section>
 
-      <section aria-labelledby="profile-collections-heading" className="space-y-3 text-left">
+      <section aria-labelledby="profile-collections-heading" className={`${card} space-y-3 p-5 text-left`}>
         <div className="flex items-baseline justify-between gap-4">
           <h2 id="profile-collections-heading" className="my-0!">
             Collections
@@ -205,21 +190,17 @@ export default function Profile() {
           </Link>
         </div>
 
-        {collections === null ? (
-          <p role="status" className="text-text">
-            Loading collections…
-          </p>
-        ) : collections.length === 0 ? (
+        {collections.length === 0 ? (
           <p className="text-text">No collections yet.</p>
         ) : (
-          <ul className="divide-y divide-border rounded-lg border border-border">
-            {collections.slice(0, PREVIEW_COUNT).map((collection) => (
+          <ul className="divide-y divide-border overflow-hidden rounded-2xl border border-border">
+            {collections.map((collection) => (
               <li key={collection.id}>
                 <Link
                   to="/collections"
-                  className={`block px-4 py-3 font-heading text-text-h hover:bg-accent-bg ${focusRing}`}
+                  className={`block px-4 py-3 font-semibold text-text-h no-underline hover:bg-accent-bg ${focusRing}`}
                 >
-                  {collection.title || 'Untitled collection'}
+                  {collection.name}
                 </Link>
               </li>
             ))}
@@ -227,12 +208,12 @@ export default function Profile() {
         )}
       </section>
 
-      <div className="flex flex-col items-center gap-3 border-t border-border pt-6">
+      <div className="flex flex-col items-center gap-3 pt-2">
         <button
           type="button"
           onClick={() => void handleSignOut()}
           disabled={signingOut}
-          className={`rounded-md border border-border px-4 py-2 font-heading text-text-h disabled:opacity-50 ${focusRing}`}
+          className="btn px-5 py-2 disabled:opacity-50"
         >
           {signingOut ? 'Signing out…' : 'Sign out'}
         </button>

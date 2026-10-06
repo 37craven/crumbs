@@ -16,10 +16,9 @@ import {
 import { passwordChangeSchema, profileSchema } from '../lib/schemas'
 import type { PasswordChangeInput, ProfileInput, User } from '../lib/schemas'
 
-const inputClass =
-  'w-full rounded-md border border-border bg-bg px-3 py-2 font-sans text-text outline-none focus-visible:border-accent'
-const buttonClass =
-  'rounded-md bg-accent px-4 py-2 font-heading text-bg disabled:opacity-50'
+const inputClass = 'field'
+const buttonClass = 'btn btn-primary px-5 py-2 disabled:opacity-50'
+const card = 'space-y-4 rounded-3xl border border-border bg-white p-6 shadow-sm'
 
 function Field({
   id,
@@ -34,7 +33,7 @@ function Field({
 }) {
   return (
     <div className="space-y-1 text-left">
-      <label htmlFor={id} className="block font-heading text-text-h">
+      <label htmlFor={id} className="block text-sm font-semibold text-text-h">
         {label}
       </label>
       {children}
@@ -56,7 +55,7 @@ function Feedback({ error, success }: { error: string | null; success: string | 
         </p>
       )}
       {success && (
-        <p role="status" className="text-text-h">
+        <p role="status" className="font-semibold text-[#2b7a55]">
           {success}
         </p>
       )}
@@ -121,7 +120,7 @@ function DetailsForm({ user }: { user: User }) {
       onSubmit={handleSubmit(onSubmit)}
       noValidate
       aria-labelledby="details-heading"
-      className="space-y-4"
+      className={card}
     >
       <h2 id="details-heading" className="text-left">
         Your details
@@ -231,7 +230,7 @@ function PasswordForm() {
       onSubmit={handleSubmit(onSubmit)}
       noValidate
       aria-labelledby="password-heading"
-      className="space-y-4"
+      className={card}
     >
       <h2 id="password-heading" className="text-left">
         Change password
@@ -314,7 +313,7 @@ function PhotoSection({ user }: { user: User }) {
   }
 
   return (
-    <section aria-labelledby="photo-heading" className="space-y-4">
+    <section aria-labelledby="photo-heading" className={card}>
       <h2 id="photo-heading" className="text-left">
         Profile photo
       </h2>
@@ -336,7 +335,7 @@ function PhotoSection({ user }: { user: User }) {
                 type="button"
                 onClick={() => void run(removeAvatar, 'Photo removed.')}
                 disabled={busy}
-                className="rounded-md border border-border px-4 py-2 font-heading text-text-h disabled:opacity-50"
+                className="btn px-5 py-2 disabled:opacity-50"
               >
                 Remove photo
               </button>
@@ -369,12 +368,12 @@ export default function EditProfile() {
   }
 
   return (
-    <section className="space-y-10">
+    <section className="mx-auto max-w-xl space-y-6">
       <div className="space-y-2 text-left">
-        <Link to="/profile" className="text-accent underline underline-offset-4">
-          Back to profile
+        <Link to="/profile" className="text-sm text-accent no-underline hover:underline">
+          ← Profile
         </Link>
-        <h1 className="text-4xl font-heading text-text-h">Edit profile</h1>
+        <h1>Edit profile</h1>
       </div>
 
       <PhotoSection user={user} />
