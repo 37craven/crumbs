@@ -4,7 +4,9 @@ import CrumbCanvas from '../components/CrumbCanvas'
 import CrumbUploader from '../components/CrumbUploader'
 import CrumbViewer from '../components/CrumbViewer'
 import { fetchCrumbs } from '../lib/crumbs'
+import { fetchCollections } from '../lib/collections'
 import type { Crumb } from '../lib/schemas'
+import type { CollectionOption } from '../lib/collections'
 
 const linkClass =
   'text-accent underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent'
@@ -14,6 +16,23 @@ export default function Crumbs() {
   const [loadError, setLoadError] = useState<string | null>(null)
   const [selected, setSelected] = useState<Crumb | null>(null)
   const [loaded, setLoaded] = useState(false)
+  const [collections, setCollections] = useState<CollectionOption[]>([])
+
+  // Only fills the "add to a collection" picker, so a failure here must not
+  // stop the crumbs themselves from loading.
+  useEffect(() => {
+    let cancelled = false
+    fetchCollections()
+      .then((list) => {
+        if (!cancelled) setCollections(list)
+      })
+      .catch(() => {
+        if (!cancelled) setCollections([])
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -65,7 +84,10 @@ export default function Crumbs() {
         onSelect={setSelected}
       />
 
-      <CrumbUploader onUploaded={(crumb) => setCrumbs((current) => [crumb, ...current])} />
+      <CrumbUploader
+        collections={collections}
+        onUploaded={(crumb) => setCrumbs((current) => [crumb, ...current])}
+      />
       <CrumbViewer crumb={selected} onClose={() => setSelected(null)} />
     </section>
   )

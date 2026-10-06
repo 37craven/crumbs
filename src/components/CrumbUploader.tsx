@@ -3,9 +3,9 @@ import type { ChangeEvent } from 'react'
 import { uploadCrumb } from '../lib/crumbs'
 import { resizeToFit } from '../lib/image'
 import type { Crumb } from '../lib/schemas'
+import type { CollectionOption } from '../lib/collections'
 
-// The collections the user can pick from. Whoever builds the Collections page supplies these.
-export type CollectionOption = { id: string; name: string }
+export type { CollectionOption }
 
 const MAX_BATCH = 10
 const CAPTION_MAX = 60
@@ -100,12 +100,17 @@ export default function CrumbUploader({
     const collectionId = choice || null
 
     const finished = new Set<string>()
+    // The crumb is saved even when the collection copy is refused, so these are
+    // reported together at the end rather than failing the whole upload.
+    const copyErrors = new Set<string>()
 
     for (const item of items) {
       update(item.id, { status: 'uploading', error: null })
       try {
         const image = await resizeToFit(item.file)
-        onUploaded(await uploadCrumb(image, item.caption, collectionId))
+        const result = await uploadCrumb(image, item.caption, collectionId)
+        if (result.collectionCopyError) copyErrors.add(result.collectionCopyError)
+        onUploaded(result.crumb)
         finished.add(item.id)
       } catch (error) {
         update(item.id, {
@@ -117,6 +122,7 @@ export default function CrumbUploader({
 
     release(items.filter((item) => finished.has(item.id)))
     setItems((current) => current.filter((item) => !finished.has(item.id)))
+    setNotice(copyErrors.size > 0 ? `Uploaded, but not added to the collection: ${[...copyErrors][0]}` : null)
     setBusy(false)
   }
 
@@ -219,7 +225,7 @@ export default function CrumbUploader({
               <option value="">No collection</option>
               {collections.map((collection) => (
                 <option key={collection.id} value={collection.id}>
-                  {collection.name}
+                  {collection.title || 'Untitled collection'}
                 </option>
               ))}
             </select>

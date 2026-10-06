@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { api } from './api'
-import { crumbRecordSchema } from './schemas'
-import type { Crumb } from './schemas'
+import { crumbRecordSchema, crumbUploadResponseSchema } from './schemas'
+import type { Crumb, CrumbResult } from './schemas'
 
 const dateFormat = new Intl.DateTimeFormat(undefined, { dateStyle: 'long' })
 
@@ -22,19 +22,23 @@ export async function fetchCrumbs(): Promise<Crumb[]> {
   return z.object({ crumbs: z.array(crumbRecordSchema) }).parse(data).crumbs
 }
 
+// Uploads a photo as multipart/form-data: the server takes the picture in a
+// field named "image", and the caption and collection alongside it.
 export async function uploadCrumb(
   image: Blob,
   caption: string,
   collectionId: string | null = null,
-): Promise<Crumb> {
+): Promise<CrumbResult> {
+  const body = new FormData()
+  body.append('image', image, 'upload.jpg')
   const trimmed = caption.trim()
-  const { data } = await api.post('/api/crumbs', image, {
-    params: {
-      ...(trimmed ? { caption: trimmed } : {}),
-      ...(collectionId ? { collection: collectionId } : {}),
-    },
-    headers: { 'Content-Type': image.type },
-    timeout: 60_000,
-  })
-  return crumbRecordSchema.parse(data.crumb)
+  if (trimmed) body.append('caption', trimmed)
+  if (collectionId) body.append('collectionId', collectionId)
+
+  const { data } = await api.post('/api/crumbs', body, { timeout: 60_000 })
+  return crumbUploadResponseSchema.parse(data)
+}
+
+export async function deleteCrumb(id: string): Promise<void> {
+  await api.delete(`/api/crumbs/${id}`)
 }
