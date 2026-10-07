@@ -33,8 +33,8 @@ export default function Crumbs() {
   }, [])
 
   return (
-    <section className="flex flex-col gap-6 pb-24">
-      <header className="px-6 text-center">
+    <section className="flex min-h-0 flex-1 flex-col gap-3">
+      <header className="shrink-0 px-6 text-center">
         <h1>Crumbs</h1>
         <p className="mt-1 text-sm">Drag around to browse. Tap a crumb to open it.</p>
       </header>

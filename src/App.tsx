@@ -21,13 +21,15 @@ export default function App() {
 
   const layout =
     pathname === '/crumbs'
-      ? 'w-full py-8'
+      ? 'flex min-h-0 w-full flex-1 flex-col py-4'
       : authPaths.includes(pathname)
         ? 'mx-auto w-full max-w-md px-4 py-12 [&>section]:rounded-3xl [&>section]:border [&>section]:border-border [&>section]:bg-white [&>section]:p-8 [&>section]:shadow-sm'
         : 'mx-auto w-full max-w-[860px] px-6 py-8'
 
+  // On /crumbs the page is exactly one screen tall (nav bar + canvas) so it never scrolls.
+  // Everywhere else the wrapper is invisible (`contents`) and nothing changes.
   return (
-    <>
+    <div className={pathname === '/crumbs' ? 'flex h-dvh flex-col' : 'contents'}>
       <NavBar />
       <main className={layout}>
         <Routes>
@@ -44,6 +46,6 @@ export default function App() {
           <Route path="*" element={<NotFound />} />
         </Routes>
       </main>
-    </>
+    </div>
   )
 }

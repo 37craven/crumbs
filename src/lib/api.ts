@@ -11,6 +11,16 @@ export const api = axios.create({
   headers: { 'Content-Type': 'application/json' },
 })
 
+// The instance defaults to JSON. For a FormData body that makes axios turn the
+// form into JSON, so the server never sees the file. Dropping the header lets
+// the browser send real multipart/form-data with the correct boundary.
+api.interceptors.request.use((config) => {
+  if (config.data instanceof FormData) {
+    config.headers.setContentType(undefined)
+  }
+  return config
+})
+
 export class ApiError extends Error {
   readonly status: number
   readonly fields: Record<string, string[]>
@@ -49,4 +59,4 @@ api.interceptors.response.use(
 export async function fetchHealth(): Promise<Health> {
   const { data } = await api.get('/health')
   return healthSchema.parse(data)
-}
+} 
