@@ -4,8 +4,9 @@ import Avatar from '../components/Avatar'
 import CrumbViewer from '../components/CrumbViewer'
 import FriendsDialog from '../components/FriendsDialog'
 import { ApiError } from '../lib/api'
+import { fetchSuggestedFriends } from '../lib/friends'
 import { crumbLabel, crumbSrc, fetchCrumbs } from '../lib/crumbs'
-import type { Crumb } from '../lib/schemas'
+import type { Crumb, Friend } from '../lib/schemas'
 import { useAuth } from '../hooks/useAuth'
 import { fullName } from '../lib/user'
 
@@ -29,6 +30,8 @@ export default function Profile() {
   const [crumbs, setCrumbs] = useState<Crumb[] | null>(null)
   const [crumbsFailed, setCrumbsFailed] = useState(false)
   const [selected, setSelected] = useState<Crumb | null>(null)
+  const [suggestions, setSuggestions] = useState<Friend[] | null>(null)
+  const [suggestionsFailed, setSuggestionsFailed] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -38,6 +41,21 @@ export default function Profile() {
       })
       .catch(() => {
         if (!cancelled) setCrumbsFailed(true)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+
+  useEffect(() => {
+    let cancelled = false
+    fetchSuggestedFriends()
+      .then((list) => {
+        if (!cancelled) setSuggestions(list)
+      })
+      .catch(() => {
+        if (!cancelled) setSuggestionsFailed(true)
       })
     return () => {
       cancelled = true
@@ -133,6 +151,43 @@ export default function Profile() {
           )
         })}
       </ul>
+
+      {suggestionsFailed ? (
+        <section aria-labelledby="suggested-friends-heading" className={`${card} space-y-3 p-5 text-left`}>
+          <h2 id="suggested-friends-heading" className="my-0!">
+            Suggested friends
+          </h2>
+          <p className="text-text">Couldn't load suggestions.</p>
+        </section>
+      ) : suggestions === null ? (
+        <section aria-labelledby="suggested-friends-heading" className={`${card} space-y-3 p-5 text-left`}>
+          <h2 id="suggested-friends-heading" className="my-0!">
+            Suggested friends
+          </h2>
+          <p role="status" className="text-text">
+            Loading suggestions…
+          </p>
+        </section>
+      ) : suggestions.length > 0 ? (
+        <section aria-labelledby="suggested-friends-heading" className={`${card} space-y-3 p-5 text-left`}>
+          <h2 id="suggested-friends-heading" className="my-0!">
+            Suggested friends
+          </h2>
+          <ul className="-mx-1 flex gap-4 overflow-x-auto px-1 pb-2">
+            {suggestions.map((person) => (
+              <li
+                key={person.id}
+                className="flex w-20 shrink-0 flex-col items-center gap-2 text-center"
+              >
+                <Avatar user={person} className="size-16 text-2xl" />
+                <span className="w-full truncate text-sm font-semibold text-text-h">
+                  @{person.username}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
 
       <section aria-labelledby="profile-crumbs-heading" className={`${card} space-y-3 p-5 text-left`}>
         <div className="flex items-baseline justify-between gap-4">
