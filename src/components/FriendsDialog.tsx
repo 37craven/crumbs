@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { fetchFriends } from '../lib/friends'
+import { profilePath } from '../lib/people'
 import type { Friend } from '../lib/schemas'
 import { fullName } from '../lib/user'
 import Avatar from './Avatar'
@@ -9,7 +11,7 @@ type State =
   | { status: 'error'; message: string }
   | { status: 'ready'; friends: Friend[] }
 
-function FriendsList() {
+function FriendsList({ onOpenProfile }: { onOpenProfile?: () => void }) {
   const [state, setState] = useState<State>({ status: 'loading' })
   const [attempt, setAttempt] = useState(0)
 
@@ -62,20 +64,35 @@ function FriendsList() {
   }
 
   if (state.friends.length === 0) {
-    return <p className="px-5 py-6 text-text">No friends yet.</p>
+    // Search can now find anyone, so the dialog does not carry its own search
+    // box; it points at the one place that does.
+    return (
+      <p className="px-5 py-6 text-text">
+        No friends yet.{' '}
+        <Link to="/search" onClick={onOpenProfile} className="text-accent underline">
+          Search for people
+        </Link>
+      </p>
+    )
   }
 
   return (
-    <ul className="divide-y divide-border overflow-y-auto">
+    <ul className="divide-y divide-border">
       {state.friends.map((friend) => {
         const name = fullName(friend)
         return (
           <li key={friend.id} className="flex items-center gap-3 px-5 py-3">
             <Avatar user={friend} className="size-11 shrink-0 text-lg" />
-            <div className="min-w-0">
-              <p className="truncate font-heading text-text-h">{name || friend.username}</p>
-              {name && <p className="truncate text-sm text-text">@{friend.username}</p>}
-            </div>
+            <Link
+              to={profilePath(friend.username)}
+              className="min-w-0 flex-1 rounded focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+              onClick={onOpenProfile}
+            >
+              <span className="block truncate font-heading text-text-h no-underline">
+                {name || friend.username}
+              </span>
+              {name && <span className="block truncate text-sm text-text">@{friend.username}</span>}
+            </Link>
           </li>
         )
       })}
@@ -86,9 +103,13 @@ function FriendsList() {
 export default function FriendsDialog({
   open,
   onClose,
+  onOpenProfile,
 }: {
   open: boolean
   onClose: () => void
+  // Following a profile link inside a modal dialog would leave the page behind
+  // a backdrop, so the caller closes it first.
+  onOpenProfile?: () => void
 }) {
   const ref = useRef<HTMLDialogElement>(null)
 
@@ -121,7 +142,7 @@ export default function FriendsDialog({
           Close
         </button>
       </div>
-      {open && <FriendsList />}
+      {open && <FriendsList onOpenProfile={onOpenProfile} />}
     </dialog>
   )
 }

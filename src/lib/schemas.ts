@@ -18,6 +18,7 @@ export const userSchema = z.object({
   lastName: z.string().nullish(),
   avatarUrl: z.string().nullish(),
   friendsCount: z.number().int().nonnegative().optional(),
+  emailVerified: z.boolean(),
 })
 
 export type User = z.infer<typeof userSchema>

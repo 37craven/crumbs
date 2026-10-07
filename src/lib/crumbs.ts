@@ -5,9 +5,7 @@ import type { Crumb, CrumbResult } from './schemas'
 
 const dateFormat = new Intl.DateTimeFormat(undefined, { dateStyle: 'long' })
 
-export function crumbSrc(url: string): string {
-  return /^https?:\/\//.test(url) ? url : `${api.defaults.baseURL ?? ''}${url}`
-}
+export { assetUrl as crumbSrc } from './api'
 
 // The caption if there is one, otherwise the day it was uploaded.
 export function crumbLabel(crumb: Crumb): string {
