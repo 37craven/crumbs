@@ -131,8 +131,11 @@ export default function CrumbUploader({
         onClick={() => inputRef.current?.click()}
         // A circle, not a squircle: this is the one element that floats over the
         // canvas, and the diffuse shadow is what separates it from the photos.
-        // It sits above the mobile tab bar, hence the raised bottom offset.
-        className="fixed bottom-[calc(5.5rem+env(safe-area-inset-bottom))] left-5 z-20 grid size-14 place-items-center rounded-full bg-accent text-on-accent shadow-float transition duration-200 ease-ios active:scale-[0.97] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent lg:bottom-8"
+        // It is pinned to the right rather than the left, because the left edge
+        // on a desktop is the rail, and your profile sits at the bottom of it —
+        // a left-hand button lands on top of that. It sits above the mobile tab
+        // bar, hence the raised bottom offset.
+        className="fixed right-5 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-20 grid size-14 place-items-center rounded-full bg-accent text-on-accent shadow-float transition duration-200 ease-ios active:scale-[0.97] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent lg:bottom-8 lg:right-8"
       >
         <Plus size={26} strokeWidth={2} />
       </button>

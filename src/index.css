@@ -269,3 +269,15 @@ code {
   -webkit-mask-image: linear-gradient(to bottom, #000 60%, transparent 100%);
   mask-image: linear-gradient(to bottom, #000 60%, transparent 100%);
 }
+
+/* A sideways strip scrolls with a swipe or a trackpad but shows no track: the
+   cut-off card is the affordance, and on iOS a visible scrollbar would sit on
+   top of the cards themselves. */
+@utility scrollbar-hidden {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}

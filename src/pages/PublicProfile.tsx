@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import Avatar from '../components/Avatar'
 import FriendsDialog from '../components/FriendsDialog'
+import SuggestedFriends from '../components/SuggestedFriends'
 import CrumbViewer from '../components/CrumbViewer'
 import FolderCard from '../components/FolderCard'
 import SignOutButton from '../components/SignOutButton'
@@ -327,6 +328,8 @@ export default function PublicProfilePage() {
           </Link>
         </p>
       )}
+
+      {profile.isSelf && <SuggestedFriends />}
 
       {canSeePrivate && (
         <>
