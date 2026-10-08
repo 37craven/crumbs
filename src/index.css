@@ -41,7 +41,7 @@
      dark column is layered on underneath where the browser can resolve it. */
   --text-h: #111111;
   --text: #8e8e93;
-  --bg: #f2f2f2;
+  --bg: #f5f5f5;
   --surface: #ffffff;
   --inactive: #c7c7cc;
   --fill: #efefef;
@@ -52,6 +52,10 @@
   --danger: #c9503f;
   --success: #2f8f60;
   --code-bg: #efefef;
+
+  /* The wordmark is the one piece of the app allowed to be the accent itself:
+     on light grey it is the only thing on the page that is the brand colour. */
+  --wordmark: var(--accent);
 
   /* Depth comes from white-on-grey layering, so the one shadow in the system
      is reserved for things that genuinely float over that layering. */
@@ -109,6 +113,11 @@
     --success: #6fcb9b;
     --code-bg: #3a3a3c;
 
+    /* White rather than the accent: on a near-black rail the accent is already
+       the loudest thing in the app, and a logo that competes with the buttons
+       reads as one of them. */
+    --wordmark: #ffffff;
+
     /* A shadow is invisible against a near-black canvas, so elevation in dark
        is carried entirely by the surface step. */
     --shadow-float-value: 0 8px 24px rgba(0, 0, 0, 0.4);
@@ -130,7 +139,8 @@
   --fill: #3a3a3c;
   --danger: #f09184;
   --success: #6fcb9b;
-  --code-bg: #3a3a3c;
+  --code-bg: #1f1f21;
+  --wordmark: #ffffff;
   --shadow-float-value: 0 8px 24px rgba(0, 0, 0, 0.4);
   --shadow-crumb-value: 0 0 0 1px rgba(255, 255, 255, 0.1), 0 10px 28px rgba(0, 0, 0, 0.6);
 }
@@ -157,24 +167,18 @@
   }
 }
 
-/* The <Squircle> component paints the true superellipse with an inline
-   clip-path, which is what Safari and Firefox need since neither ships
-   corner-shape yet. This is only used on the large surfaces — cards, media,
-   sheets — where the difference between an arc and a superellipse is actually
-   visible; below about 16px the two are indistinguishable, and a 16px button
-   would not repay a clip-path plus a ResizeObserver. The !important is
-   required because the library sets clip-path inline. */
-@supports (corner-shape: squircle) {
-  .sq-clip {
-    clip-path: none !important;
-  }
-}
+
 
 /* --- Sheets --------------------------------------------------------------- */
 
 dialog.sheet {
   border: 0;
-  margin: 0;
+  /* margin: auto is the UA's own centring for a modal dialog — fixed position,
+     pinned to all four edges, then pushed to the middle by its margins. The
+     reset zeroes it, which drops the dialog into the top-left corner the moment
+     it is given a width, so it is put back here rather than left to the reset.
+     Everything below then aligns the panel inside a box that is already centred. */
+  margin: auto;
   padding: 0;
   background: transparent;
   color: var(--text);
@@ -295,4 +299,39 @@ code {
   &::-webkit-scrollbar {
     display: none;
   }
+}
+
+/* A strip that runs off both ends. The mask dissolves the tiles into the page
+   rather than cutting them at the edge, so a row of ten reads as ten that carry
+   on rather than as ten that stop. The fade is pinned to the element, not the
+   content, so it stays put while the strip scrolls under it — and because the
+   masked strip is still the full width of its container, the two ends are always
+   faded whether or not there is anything more to scroll to. */
+@utility fade-edges {
+  -webkit-mask-image: linear-gradient(
+    to right,
+    transparent 0,
+    #000 1rem,
+    #000 calc(100% - 1rem),
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to right,
+    transparent 0,
+    #000 1.0rem,
+    #000 calc(100% - 1rem),
+    transparent 100%
+  );
+}
+
+/* The wordmark is seven black strokes on a transparent ground, which would leave
+   it invisible on a dark canvas. So the file is used as a mask and the mark is
+   painted in `--wordmark` — the accent on light, white on dark. One asset, and
+   the theme decides its colour the way it decides everything else. The aspect
+   ratio is the file's own, so the box needs no height of its own. */
+@utility wordmark {
+  aspect-ratio: 199 / 47;
+  background-color: var(--wordmark);
+  -webkit-mask: url('/wordmark_logo.svg') center / contain no-repeat;
+  mask: url('/wordmark_logo.svg') center / contain no-repeat;
 }

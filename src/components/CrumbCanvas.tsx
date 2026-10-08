@@ -81,14 +81,18 @@ function homeCamera(
 }
 
 export default function CrumbCanvas({
-  crumbs = NO_CRUMBS,
-  emptyMessage,
-  onSelect,
-}: {
-  crumbs?: Crumb[]
-  emptyMessage?: string
-  onSelect?: (crumb: Crumb) => void
-}) {
+   crumbs = NO_CRUMBS,
+   emptyMessage,
+   onSelect,
+   scope = 'all',
+   onScopeChange,
+ }: {
+   crumbs?: Crumb[]
+   emptyMessage?: string
+   onSelect?: (crumb: Crumb) => void
+   scope?: 'mine' | 'all'
+   onScopeChange?: (scope: 'mine' | 'all') => void
+ }) {
   const viewportRef = useRef<HTMLDivElement>(null)
   const drag = useRef<Drag | null>(null)
   const frame = useRef(0)
@@ -375,14 +379,36 @@ export default function CrumbCanvas({
           light one. A solid surface with a hairline and the float shadow keeps
           the same quiet weight but stays readable over anything. */}
       {crumbs.length > 0 && (
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={recenter}
-          className="absolute top-0 right-4 z-10 mt-4 shrink-0 bg-surface shadow-float"
-        >
-          Recenter
-        </Button>
+        <div className="absolute top-0 right-4 z-10 mt-4 flex shrink-0 gap-2">
+          {onScopeChange && (
+            <div className="flex rounded-3xl border border-border bg-surface shadow-float">
+              <Button
+                variant={scope === 'all' ? 'primary' : 'secondary'}
+                size="sm"
+                onClick={() => onScopeChange('all')}
+                className="rounded-r-none"
+              >
+                Friends
+              </Button>
+              <Button
+                variant={scope === 'mine' ? 'primary' : 'secondary'}
+                size="sm"
+                onClick={() => onScopeChange('mine')}
+                className="rounded-l-none"
+              >
+                Mine
+              </Button>
+            </div>
+          )}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={recenter}
+            className="bg-surface shadow-float"
+          >
+            Recenter
+          </Button>
+        </div>
       )}
     </div>
   )

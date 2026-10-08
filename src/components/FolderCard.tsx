@@ -35,7 +35,7 @@ function fanRotation(collectionId: string, index: number): number {
 // shadow-none in one class list would be decided by the order the stylesheet
 // happens to emit them in, not by the order they are written here, so the tile
 // is built with one shadow class and never two.
-const TILE_SHADOW = 'shadow-float'
+const TILE_SHADOW = 'shadow-lg'
 
 // No padding here: a picture wants the whole tile, and padding over the white
 // surface shows as a frame around the photo. The written tiles add their own,
@@ -47,7 +47,7 @@ const TILE_SHADOW = 'shadow-float'
 // has no xs/sm border width, so 1px is as thin as it goes — border-inactive
 // rather than a palette grey, so it follows the theme.
 const TILE =
-  'h-[130px] w-[30%] shrink-0 overflow-hidden rounded-control border border-inactive bg-surface text-left ' +
+  'h-[130px] w-[30%] shrink-0 overflow-hidden rounded-control bg-surface text-left ' +
   'rotate-(--fan-rotate) transition-transform duration-200 ease-ios group-hover:rotate-0'
 
 function TileLabel({ children }: { children: React.ReactNode }) {
@@ -221,7 +221,10 @@ export default function FolderCard({
       : null
 
   return (
-    <article className="group flex h-full flex-col items-center gap-2 px-2 py-3">
+    <article className="bg-code-bg shadow-md rounded-3xl group flex h-full flex-col items-center gap-2 px-2 py-3">
+            <header className="mt-auto flex items-center self-end justify-center gap-2">
+        <People owner={collection.owner} collaborators={collection.collaborators} />
+      </header>
       <div className="flex h-[156px] w-full items-center justify-center px-1">
         {tiles.length > 0 ? (
           tiles.map((tile, index) => (
@@ -235,7 +238,7 @@ export default function FolderCard({
           ))
         ) : (
           <div
-            className={`grid h-[130px] w-[40%] place-items-center rounded-control border border-inactive bg-surface text-[12px] text-text ${tileShadow}`}
+            className={`flex h-[130px] w-[30%] items-center justify-center rounded-control bg-surface text-[12px] text-text ${tileShadow}`}
           >
             Empty
           </div>
@@ -251,15 +254,20 @@ export default function FolderCard({
         </Link>
       </h3>
 
-      <p className="text-[13px] text-text">
+{/* The line is reserved whether or not there is anything to put on it. The
+          fan and everything under it is pushed to the bottom of the card, so a
+          folder that has a count is a whole line taller than one that has
+          nothing to say — and every line above it rides up by that line, landing
+          the titles on a shelf of folders at as many different heights. An empty
+          block has no line box in it at all, so the space has to be asked for
+          here rather than left to the text. */}
+      <p className="min-h-5 text-[13px] leading-5 text-text">
         {summary.collectionDate && <>{formatDate(summary.collectionDate)}</>}
-        {summary.collectionDate && memories && ' \u00b7 '}
+        {summary.collectionDate && memories && ' · '}
         {memories}
       </p>
 
-      <footer className="mt-auto flex items-center justify-center gap-2 pt-1">
-        <People owner={collection.owner} collaborators={collection.collaborators} />
-      </footer>
+
     </article>
   )
 }

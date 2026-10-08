@@ -62,7 +62,7 @@ export default function Modal({
         radius={RADIUS.card}
         className="flex max-h-[calc(92svh-1rem)] w-full flex-col overflow-hidden bg-surface p-5 shadow-float"
       >
-        <header className="flex items-start justify-between gap-4 pb-4">
+        <header className="flex items-start justify-between gap-4">
           <h2 id={headingId} className="text-[17px] font-semibold tracking-heading text-text-h">
             {title}
           </h2>

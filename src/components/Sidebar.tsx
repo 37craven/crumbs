@@ -11,6 +11,7 @@ import { focusRing, pressable } from '../lib/ui'
 import Avatar from './Avatar'
 import SignOutButton from './SignOutButton'
 import ThemeToggle from './ThemeToggle'
+import Wordmark from './Wordmark'
 
 type Tab = { to: string; label: string; icon: ReactNode }
 
@@ -80,13 +81,8 @@ export default function Sidebar() {
           of a near-black rail. The surfaces are solid rather than frosted — the
           blur only ever showed where the full-width canvas passed behind, and a
           flat panel is one less thing to read as depth. */}
-      <header className="sticky top-0 z-30 hidden h-svh w-60 shrink-0 flex-col gap-3 self-start border-r-2 border-inactive bg-surface px-4 py-5 shadow-xl lg:flex">
-        <Link
-          to="/"
-          className={`rounded-control px-3 py-2 text-[19px] font-semibold tracking-heading text-text-h no-underline ${focusRing} ${pressable}`}
-        >
-          🍞 Crumbs
-        </Link>
+      <header className="sticky top-0 z-30 hidden h-svh w-60 shrink-0 flex-col gap-3 self-start border-r-2 border-code-bg bg-surface px-4 py-5 shadow-xl lg:flex">
+        <Wordmark className="w-[124px] px-3 py-2" />
 
         {/* flex-1 with items-start: the destinations stay a short list at the
             top rather than spreading down the whole rail. */}

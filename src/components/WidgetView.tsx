@@ -34,14 +34,19 @@ const POSTER =
   'w-[220px] shrink-0 rotate-(--fan-rotate) transition duration-200 ease-ios ' +
   'hover:rotate-0 hover:-translate-y-2 motion-reduce:hover:translate-y-0'
 
-const POSTER_BODY = 'relative h-[320px]'
+// overflow-hidden is what rounds the corners of the card's contents. The
+// superellipse only draws a clip-path, and index.css takes that away on browsers
+// with corner-shape, leaving border-radius — which does nothing to a child unless
+// something is hiding the overflow. Without it a picture filling the card shows
+// its own square corners over the top of the curve.
+const POSTER_BODY = 'relative h-[320px] overflow-hidden'
 
 /** The whole card is one big tap target, for the types that open an editor. */
 const OPENABLE = `cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${pressable}`
 
 function PosterLabel({ children }: { children: React.ReactNode }) {
   return (
-    <span className="flex shrink-0 items-center gap-1.5 text-[11px] font-medium tracking-wide text-text uppercase">
+    <span className="flex shrink-0 items-center gap-1.5 text-xs font-medium tracking-wide text-text uppercase">
       {children}
     </span>
   )
@@ -98,14 +103,50 @@ function GrowingTextarea({
   )
 }
 
-// "March" and "14", read in UTC so a plain YYYY-MM-DD cannot slip a day.
-function splitDate(value: string | null | undefined): { month: string; day: string } {
-  if (!value) return { month: '', day: '' }
+// "March", "14" and "2026", read in UTC so a plain YYYY-MM-DD cannot slip a day.
+function splitDate(value: string | null | undefined): { month: string; day: string; year: string } {
+  if (!value) return { month: '', day: '', year: '' }
   const date = new Date(`${value}T00:00:00Z`)
-  if (Number.isNaN(date.getTime())) return { month: '', day: '' }
+  if (Number.isNaN(date.getTime())) return { month: '', day: '', year: '' }
   const format = (options: Intl.DateTimeFormatOptions) =>
     new Intl.DateTimeFormat(undefined, { ...options, timeZone: 'UTC' }).format(date)
-  return { month: format({ month: 'long' }), day: format({ day: 'numeric' }) }
+  return {
+    month: format({ month: 'long' }),
+    day: format({ day: 'numeric' }),
+    year: format({ year: 'numeric' }),
+  }
+}
+
+/**
+ * The date, ringed in a red circle drawn by hand.
+ *
+ * A perfect circle would read as a border on the card and nothing more. This one
+ * is not: the curve is uneven all the way round, and it overlaps itself where it
+ * starts and ends, which is what a pen does when it comes back to where it
+ * began. Inline SVG because a div can only be straight, skewed, or a rounded
+ * rectangle — none of which is a ring drawn by a hand.
+ *
+ * `currentColor` so the red follows the theme instead of being a fixed value that
+ * would go wrong in dark mode. Drawn at 1:1 with the viewBox where it is used at
+ * its natural size, so "6" on the stroke is 6px on screen rather than 6 scaled
+ * units.
+ */
+function DateCircle() {
+  return (
+    <svg
+      viewBox="0 0 120 112"
+      aria-hidden="true"
+      className="pointer-events-none absolute inset-0 size-full text-danger"
+    >
+      <path
+        d="M60 6C94 5 112 28 113 57C114 85 92 108 60 106C28 104 8 84 9 56C10 29 27 7 56 5C60 5 63 5 65 6"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="6"
+        strokeLinecap="round"
+      />
+    </svg>
+  )
 }
 
 function NotesWidget({
@@ -238,7 +279,7 @@ const setChecklist = async (checklist: ChecklistIn[]) => {
                 <ul className="space-y-1">
                   {widget.checklist.map((item) => (
                     <li key={item.id}>
-                      <label className="flex items-start gap-2.5 py-1 text-[15px]">
+                      <label className="flex items-start gap-2 py-1 text-[15px]">
                         <input
                           type="checkbox"
                           checked={item.done}
@@ -329,7 +370,7 @@ function DateWidget({
     }
   }
 
-  const { month, day } = splitDate(widget.date)
+  const { month, day, year } = splitDate(widget.date)
 
   return (
     <>
@@ -346,9 +387,21 @@ function DateWidget({
               <Calendar size={13} strokeWidth={1.75} />
               {month}
             </PosterLabel>
-            <span className="text-[68px] leading-none font-bold tracking-heading text-text-h">
-              {day}
-            </span>
+
+            {/* Day in its ring, then the year — the whole date read off one
+                calendar page top to bottom rather than split across the page.
+                The ring is absolutely positioned behind the number so the digit
+                is centred in it whatever its width, one or two. */}
+            <div className="flex flex-col items-center">
+              <span className="relative grid h-[112px] w-[120px] place-items-center">
+                <DateCircle />
+                <span className="text-[76px] leading-none font-bold tracking-heading text-text-h">
+                  {day}
+                </span>
+              </span>
+              <span className="text-[14px] leading-none text-text">{year}</span>
+            </div>
+
             {widget.label && (
               <span className="mt-1 text-[14px] text-text">{widget.label}</span>
             )}
@@ -372,9 +425,15 @@ function DateWidget({
             {day && (
               <div className="flex flex-col items-center gap-1 rounded-media bg-fill py-6 text-center">
                 <span className="text-[13px] tracking-wide text-text uppercase">{month}</span>
-                <span className="text-[56px] leading-none font-bold tracking-heading text-text-h">
-                  {day}
+                {/* The same ring, scaled down with the number — the preview has to
+                    be the same date the card is. */}
+                <span className="relative grid h-[84px] w-[90px] place-items-center">
+                  <DateCircle />
+                  <span className="text-[56px] leading-none font-bold tracking-heading text-text-h">
+                    {day}
+                  </span>
                 </span>
+                <span className="text-[13px] leading-none text-text">{year}</span>
               </div>
             )}
 
@@ -465,10 +524,14 @@ function ImageWidget({
             onOpen ? `cursor-zoom-in ${OPENABLE}` : 'cursor-default'
           }`}
         >
+          {/* No radius of its own: the card's shape is the one that should show,
+              and a second, differently-rounded corner on top of it is what makes a
+              photo look pasted into its frame. */}
           <img
             src={assetUrl(widget.image.url)}
             alt={widget.image.originalName || 'Picture'}
             loading="lazy"
+            decoding="async"
             className="size-full object-cover"
           />
         </button>
@@ -637,7 +700,12 @@ export default function WidgetView({
       className={POSTER}
       style={{ '--fan-rotate': `${tiltFor(widget.id)}deg` } as React.CSSProperties}
     >
-      <Card as="article" floating radius={RADIUS.media} className={POSTER_BODY}>
+      {/* The card is the frame and nothing more: every widget draws the inset it
+          needs itself. It used to pad as well, so a picture was cropped to a
+          smaller rectangle in the middle of a 40px white border — the one thing a
+          photograph should never be shown in. A picture has no inset of its own
+          and so fills the card exactly as it does on a folder tile. */}
+      <Card as="article" floating radius={RADIUS.media} className={POSTER_BODY} padded={false}>
         {widget.type === 'notes' && (
           <NotesWidget
             widget={widget}

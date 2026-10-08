@@ -4,16 +4,18 @@ import { ArrowUp } from '@untitledui/icons/ArrowUp'
 import { ArrowDown } from '@untitledui/icons/ArrowDown'
 import { ArrowLeft } from '@untitledui/icons/ArrowLeft'
 import { ArrowRight } from '@untitledui/icons/ArrowRight'
+import { AlignLeft } from '@untitledui/icons/AlignLeft'
 import { Plus } from '@untitledui/icons/Plus'
+import { Rows03 } from '@untitledui/icons/Rows03'
 import { Trash01 } from '@untitledui/icons/Trash01'
 import WidgetView from '../components/WidgetView'
 import ImageViewer from '../components/ImageViewer'
 import WidgetChooser from '../components/WidgetChooser'
+import PeopleBar from '../components/PeopleBar'
+import Select from '../components/Select'
+import Fab, { FabAction } from '../components/Fab'
+import Modal from '../components/Modal'
 import { ApiError } from '../lib/api'
-import { fetchFriends } from '../lib/friends'
-import { profilePath } from '../lib/people'
-import { fullName } from '../lib/user'
-import type { Friend } from '../lib/schemas'
 import {
   addRow,
   addWidget,
@@ -25,8 +27,6 @@ import {
   fetchCollection,
   renameRow,
   setCollectionStatus,
-  shareCollection,
-  unshareCollection,
   updateCollection,
 } from '../lib/collections'
 import { STATUS_LABELS } from '../lib/collectionSchemas'
@@ -37,14 +37,15 @@ import type {
   WidgetType,
 } from '../lib/collectionSchemas'
 import Button from '../components/Button'
-import Chip, { ChipLabel } from '../components/Chip'
+import { ChipLabel } from '../components/Chip'
 import { focusRing, pressable } from '../lib/ui'
 
 const TAGS_MAX = 8
 const TAG_MAX = 24
 
-const selectClass =
-  'rounded-full bg-fill px-3 py-2 text-[14px] text-text-h outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent'
+// The row's own add button, gone: adding a widget is now one action for the whole
+// collection, taken from the button on the glass, so the strip is only the things
+// that are already in it.
 
 // Borderless until it is touched, then it takes a fill — the title reads as
 // part of the page rather than as a field sitting on it.
@@ -117,7 +118,6 @@ function RowSection({
   onWidgetChanged,
   onWidgetDeleted,
   onWidgetsReordered,
-  onCollectionChanged,
   onRowChanged,
   onRowDeleted,
   onRowMoved,
@@ -130,14 +130,11 @@ function RowSection({
   onWidgetChanged: (next: Widget) => void
   onWidgetDeleted: (id: string) => void
   onWidgetsReordered: (widgets: Widget[]) => void
-  onCollectionChanged: (next: Collection) => void
   onRowChanged: (next: Collection) => void
   onRowDeleted: (rowId: string) => void
   onRowMoved: (order: string[]) => void
 }) {
   const [name, setName] = useState(row.name)
-  const [adding, setAdding] = useState<WidgetType | null>(null)
-  const [choosing, setChoosing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   // Which picture is full size, or null when none is. An index into this row's
   // pictures, so the arrows step through the row rather than the whole
@@ -165,23 +162,6 @@ function RowSection({
       onRowChanged(await renameRow(collection.id, row.id, name))
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Could not rename the row.')
-    }
-  }
-
-  const add = async (type: WidgetType) => {
-    setAdding(type)
-    setError(null)
-    try {
-      const result = await addWidget(collection.id, row.id, { type })
-      onWidgetChanged(result.widget)
-      // The collection comes back with it, and its status is what tells the page
-      // this collection is no longer blank — so it has to be taken, not ignored.
-      onCollectionChanged(result.collection)
-      setChoosing(false)
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not add that.')
-    } finally {
-      setAdding(null)
     }
   }
 
@@ -239,7 +219,7 @@ function RowSection({
           onChange={(event) => setName(event.target.value)}
           onBlur={() => void rename()}
           maxLength={40}
-          placeholder={`Row ${index + 1} — name it (optional)`}
+          placeholder={`Row ${index + 1}`}
           className={`${bareInput} min-w-0 flex-1 px-3 py-1.5 text-[18px] font-bold text-text-h placeholder:font-normal placeholder:text-inactive placeholder:normal-case`}
         />
         <span className="flex shrink-0 items-center gap-1">
@@ -300,20 +280,6 @@ function RowSection({
             )}
           </li>
         ))}
-
-        <li className={`${CARD_ITEM} hover:z-10`}>
-          <button
-            type="button"
-            onClick={() => setChoosing((open) => !open)}
-            aria-expanded={choosing}
-            className={`flex h-[320px] w-[220px] flex-col items-center justify-center gap-1 rounded-media border-2 border-dashed border-inactive px-4 text-text transition-colors duration-200 ease-ios hover:border-accent hover:text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${pressable}`}
-          >
-            <Plus size={34} strokeWidth={1.5} />
-            <span className="text-[14px] font-medium">
-              {choosing ? 'Close' : 'Add'}
-            </span>
-          </button>
-        </li>
       </ul>
 
       {error && (
@@ -321,13 +287,6 @@ function RowSection({
           {error}
         </p>
       )}
-
-      <WidgetChooser
-        open={choosing}
-        busy={adding}
-        onChoose={(type) => void add(type)}
-        onClose={() => setChoosing(false)}
-      />
 
       {pictures.length > 0 && (
         <ImageViewer
@@ -402,7 +361,7 @@ function TagBar({
             key={tag}
             className="inline-flex items-center gap-1 rounded-full bg-surface py-1 pr-1 pl-3 text-[13px] text-text-h"
           >
-            #{tag}
+            {tag}
             {isOwner && (
               <button
                 type="button"
@@ -452,78 +411,55 @@ function TagBar({
   )
 }
 
-function ShareForm({
+/**
+ * Which row a new widget goes in.
+ *
+ * Only asked when there is more than one row to ask about. Every row is listed
+ * with what is already in it, because the answer is almost always "the one that
+ * looks emptier" or "the one I just made", and neither is something you can work
+ * out from a row name.
+ */
+function RowPicker({
+  open,
   collection,
-  onChanged,
+  counts,
+  onPick,
+  onClose,
 }: {
+  open: boolean
   collection: Collection
-  onChanged: (next: Collection) => void
+  counts: Record<string, number>
+  onPick: (rowId: string) => void
+  onClose: () => void
 }) {
-  const [friends, setFriends] = useState<Friend[] | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const [busy, setBusy] = useState(false)
-
-  useEffect(() => {
-    let cancelled = false
-    fetchFriends()
-      .then((list) => {
-        if (!cancelled) setFriends(list)
-      })
-      .catch(() => {
-        if (!cancelled) setFriends([])
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [])
-
-  // The server only lets you share with people on your friends list.
-  const already = new Set([
-    collection.owner.id,
-    ...collection.collaborators.map((person) => person.id),
-  ])
-  const candidates = (friends ?? []).filter((friend) => !already.has(friend.id))
-
-  const add = async (userId: string) => {
-    setBusy(true)
-    setError(null)
-    try {
-      onChanged(await shareCollection(collection.id, userId))
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not share it with them.')
-    } finally {
-      setBusy(false)
-    }
-  }
-
   return (
-    <div className="space-y-2">
-      {friends === null ? (
-        <p className="text-[15px] text-text">Loading your friends…</p>
-      ) : candidates.length === 0 ? (
-        <p className="text-[15px] text-text">
-          {friends.length === 0
-            ? 'You have no friends yet.'
-            : 'Everyone on your friends list is already on this collection.'}
-        </p>
-      ) : (
-        <ul className="flex flex-wrap gap-2">
-          {candidates.map((friend) => (
-            <li key={friend.id}>
-              <Chip disabled={busy} onClick={() => void add(friend.id)}>
-                <Plus size={14} strokeWidth={1.75} />
-                {friend.firstName || friend.lastName ? fullName(friend) : friend.username}
-              </Chip>
+    <Modal open={open} onClose={onClose} title="Add to which row?" centered>
+      <ul className="space-y-1">
+        {collection.rows.map((row, index) => {
+          const count = counts[row.id] ?? 0
+
+          return (
+            <li key={row.id}>
+              <button
+                type="button"
+                onClick={() => onPick(row.id)}
+                className={`flex w-full items-center gap-3 rounded-control p-3 text-left transition duration-200 ease-ios hover:bg-fill ${focusRing} ${pressable}`}
+              >
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-[15px] font-medium text-text-h">
+                    {row.name || `Row ${index + 1}`}
+                  </span>
+                  <span className="block text-[13px] text-text">
+                    {count === 0 ? 'Empty' : count === 1 ? '1 card' : `${count} cards`}
+                  </span>
+                </span>
+                <Plus size={18} strokeWidth={1.75} className="shrink-0 text-accent" />
+              </button>
             </li>
-          ))}
-        </ul>
-      )}
-      {error && (
-        <p role="alert" className="text-[15px] text-danger">
-          {error}
-        </p>
-      )}
-    </div>
+          )
+        })}
+      </ul>
+    </Modal>
   )
 }
 
@@ -537,6 +473,16 @@ export default function CollectionDetail() {
   const [description, setDescription] = useState('')
   const [saveError, setSaveError] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
+
+  // The floating button opens into two actions, and each one is a question of its
+  // own before it is an action: a widget needs a row to go in and a kind to be.
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [addingTo, setAddingTo] = useState<string | null>(null)
+  const [choosing, setChoosing] = useState(false)
+  const [addingWidget, setAddingWidget] = useState<WidgetType | null>(null)
+  const [addError, setAddError] = useState<string | null>(null)
+  const [confirmingDelete, setConfirmingDelete] = useState(false)
+  const [deleting, setDeleting] = useState(false)
 
   // ---- A blank collection is thrown away -------------------------------------
   //
@@ -670,8 +616,13 @@ export default function CollectionDetail() {
     }
   }
 
+  // Deliberately not window.confirm: this is the only destructive thing on the
+  // page, it cannot be undone, and a native dialog is the one surface in the app
+  // that ignores the theme, the layout and the fact that the answer is on a
+  // button rather than a keyboard shortcut.
   const remove = async () => {
-    if (!window.confirm('Delete this collection and everything in it?')) return
+    setDeleting(true)
+    setSaveError(null)
     try {
       await deleteCollection(collection.id)
       navigate('/collections')
@@ -679,6 +630,9 @@ export default function CollectionDetail() {
       setSaveError(
         error instanceof ApiError ? error.message : 'Could not delete it.',
       )
+      setConfirmingDelete(false)
+    } finally {
+      setDeleting(false)
     }
   }
 
@@ -698,140 +652,158 @@ export default function CollectionDetail() {
       .filter((widget) => widget.rowId === rowId)
       .sort((a, b) => a.order - b.order)
 
+  // How full each row is, so the row picker can say which one is which without
+  // having to look — a row of three cards and a row of one are told apart by
+  // their name in most collections, and by nothing at all in the rest.
+  const countsPerRow = Object.fromEntries(
+    collection.rows.map((row) => [row.id, widgetsIn(row.id).length]),
+  )
+
+  const newRow = async () => {
+    setMenuOpen(false)
+    setAddError(null)
+    try {
+      setCollection((await addRow(collection.id)).collection)
+    } catch (error) {
+      setAddError(
+        error instanceof ApiError ? error.message : 'Could not add a row.',
+      )
+    }
+  }
+
+  // Which row the widget goes in. One row leaves no question to ask, so the
+  // chooser opens straight away; several do, so the row is picked first.
+  const startWidget = () => {
+    setMenuOpen(false)
+    setAddError(null)
+    if (collection.rows.length === 0) {
+      setAddError('Add a row first — a widget goes inside one.')
+      return
+    }
+    if (collection.rows.length === 1) {
+      setAddingTo(collection.rows[0].id)
+      return
+    }
+    setChoosing(true)
+  }
+
+  const addWidgetTo = async (type: WidgetType) => {
+    if (!addingTo) return
+    setAddingWidget(type)
+    setAddError(null)
+    try {
+      const result = await addWidget(collection.id, addingTo, { type })
+      replaceWidget(result.widget)
+      // The collection comes back with it, and its status is what tells the page
+      // this collection is no longer blank — so it has to be taken, not ignored.
+      setCollection(result.collection)
+      setAddingTo(null)
+    } catch (error) {
+      setAddError(error instanceof ApiError ? error.message : 'Could not add that.')
+    } finally {
+      setAddingWidget(null)
+    }
+  }
+
   return (
     <section className="space-y-4">
-      <header className="space-y-3">
-        <Link
-          to="/collections"
-          className="inline-block rounded text-[14px] text-accent underline underline-offset-4"
-        >
-          ← Collections
-        </Link>
+      {/* The title, and the people on it, are one band across the top: the title
+          takes the width it needs and the faces sit against the right edge, so
+          neither has to give ground to the other. On a narrow screen the faces
+          drop below the title rather than squeezing it. */}
+      <header className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
+        <div className="min-w-0 flex-1 space-y-3">
+          <Link
+            to="/collections"
+            className="inline-block rounded text-[14px] text-accent underline underline-offset-4"
+          >
+            ← Collections
+          </Link>
 
-        <label htmlFor="collection-title" className="sr-only">
-          Collection title
-        </label>
-        <input
-          id="collection-title"
-          value={title}
-          onChange={(event) => setTitle(event.target.value)}
-          onBlur={() => void saveDetails()}
-          maxLength={80}
-          placeholder="Untitled collection"
-          className={`${bareInput} w-full px-3 py-1.5 text-[26px] font-bold tracking-heading text-text-h placeholder:font-semibold placeholder:text-inactive`}
-        />
+          {/* Title and description are one thing said twice, so they sit closer
+              than anything else on the page — a single field's worth of space
+              between them, not a section's. */}
+          <div className="space-y-1">
+            <label htmlFor="collection-title" className="sr-only">
+              Collection title
+            </label>
+            <input
+              id="collection-title"
+              value={title}
+              onChange={(event) => setTitle(event.target.value)}
+              onBlur={() => void saveDetails()}
+              maxLength={80}
+              placeholder="Untitled collection"
+              className={`${bareInput} w-full px-3 py-1.5 text-[26px] font-bold tracking-heading text-text-h placeholder:font-semibold placeholder:text-inactive`}
+            />
 
-        <label htmlFor="collection-description" className="sr-only">
-          Collection description
-        </label>
-        <textarea
-          id="collection-description"
-          value={description}
-          onChange={(event) => setDescription(event.target.value)}
-          onBlur={() => void saveDetails()}
-          maxLength={500}
-          rows={2}
-          placeholder="Add a description (optional)"
-          className={`${bareInput} w-full resize-y px-3 py-1.5 text-[15px] text-text placeholder:text-inactive`}
-        />
+            <label htmlFor="collection-description" className="sr-only">
+              Collection description
+            </label>
+            <textarea
+              id="collection-description"
+              value={description}
+              onChange={(event) => setDescription(event.target.value)}
+              onBlur={() => void saveDetails()}
+              maxLength={500}
+              rows={2}
+              placeholder="Add a description (optional)"
+              className={`${bareInput} w-full resize-none px-3 py-1.5 text-[15px] text-text placeholder:text-inactive`}
+            />
+          </div>
 
-        <TagBar collection={collection} onChanged={setCollection} />
-
-        <div className="flex flex-wrap items-center gap-2">
-          <ChipLabel tone="accent" className="tracking-wide uppercase">
-            {STATUS_LABELS[collection.status]}
-          </ChipLabel>
-          {collection.isOverdue && <ChipLabel tone="danger">Overdue</ChipLabel>}
-
-          {collection.nextStatuses.length > 0 ? (
-            <>
-              <label htmlFor="detail-status" className="sr-only">
-                Change the status
-              </label>
-              <select
-                id="detail-status"
-                value={collection.status}
-                onChange={(event) => void move(event.target.value as CollectionStatus)}
-                className={selectClass}
-              >
-                <option value={collection.status}>
-                  {STATUS_LABELS[collection.status]}
-                </option>
-                {collection.nextStatuses.map((status) => (
-                  <option key={status} value={status}>
-                    {STATUS_LABELS[status]}
-                  </option>
-                ))}
-              </select>
-            </>
-          ) : (
-            <span className="text-[14px] text-text">
-              Add something and it becomes a draft.
-            </span>
-          )}
+          <TagBar collection={collection} onChanged={setCollection} />
 
           {saved && (
-            <span role="status" className="text-[14px] text-text">
+            <p role="status" className="text-[14px] text-text">
               Saved.
-            </span>
+            </p>
+          )}
+
+          {saveError && (
+            <p role="alert" className="text-[15px] text-danger">
+              {saveError}
+            </p>
           )}
         </div>
 
-        {saveError && (
-          <p role="alert" className="text-[15px] text-danger">
-            {saveError}
-          </p>
-        )}
-      </header>
+        {/* The status, then the people: both are what this collection *is* right
+            now rather than what is in it, so they sit together above the
+            contents. The status is the dropdown only — the badge beside it said
+            the same word the dropdown already had selected, and the state is
+            worth changing from where it is read. */}
+        <div className="pt-10 flex shrink-0 flex-col items-end gap-2">
+          <div className="flex items-center gap-2">
+            {collection.isOverdue && <ChipLabel tone="danger">Overdue</ChipLabel>}
 
-      <section className="space-y-2">
-        <h2 className="text-[17px] font-semibold tracking-heading text-text-h">People</h2>
-        <p className="text-[15px] text-text">
-          Created by{' '}
-          <Link
-            to={profilePath(collection.owner.username)}
-            className="rounded text-accent underline underline-offset-4"
-          >
-            {collection.owner.username ?? 'someone'}
-          </Link>
-          .{' '}
-          {collection.collaborators.length > 0 && 'Shared with '}
-          {collection.collaborators.map((person, index) => (
-            <span key={person.id}>
-              {index > 0 && ', '}
-              <Link
-                to={profilePath(person.username)}
-                className="rounded text-accent underline underline-offset-4"
-              >
-                {person.username}
-              </Link>
-            </span>
-          ))}
-          {collection.collaborators.length > 0 && '.'}
-        </p>
-
-        {collection.role === 'owner' && collection.collaborators.length > 0 && (
-          <ul className="flex flex-wrap gap-2">
-            {collection.collaborators.map((person) => (
-              <li key={person.id}>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={() =>
-                    void unshareCollection(collection.id, person.id).then(setCollection)
-                  }
+            {collection.nextStatuses.length > 0 ? (
+              <>
+                <label htmlFor="detail-status" className="sr-only">
+                  Change the status
+                </label>
+                <Select
+                  id="detail-status"
+                  value={collection.status}
+                  onChange={(event) => void move(event.target.value as CollectionStatus)}
                 >
-                  Remove {person.username}
-                </Button>
-              </li>
-            ))}
-          </ul>
-        )}
+                  <option value={collection.status}>
+                    {STATUS_LABELS[collection.status]}
+                  </option>
+                  {collection.nextStatuses.map((status) => (
+                    <option key={status} value={status}>
+                      {STATUS_LABELS[status]}
+                    </option>
+                  ))}
+                </Select>
+              </>
+            ) : (
+              <span className="text-[14px] text-text">Add something to start it.</span>
+            )}
+          </div>
 
-        {collection.role === 'owner' && (
-          <ShareForm collection={collection} onChanged={setCollection} />
-        )}
-      </section>
+          <PeopleBar collection={collection} onChanged={setCollection} />
+        </div>
+      </header>
 
       <div className="space-y-8">
         <h2 className="text-[17px] font-semibold tracking-heading text-text-h">
@@ -854,7 +826,6 @@ export default function CollectionDetail() {
             rowCount={collection.rows.length}
             onWidgetChanged={replaceWidget}
             onWidgetsReordered={setWidgets}
-            onCollectionChanged={setCollection}
             onRowMoved={(order) =>
               void reorderRows(collection.id, order)
                 .then(setCollection)
@@ -879,26 +850,93 @@ export default function CollectionDetail() {
             }
           />
         ))}
-
-        <button
-          type="button"
-          onClick={() =>
-            void addRow(collection.id).then((result) => setCollection(result.collection))
-          }
-          className={`flex w-full items-center justify-center gap-2 rounded-card border-2 border-dashed border-inactive px-6 py-6 text-text transition-colors duration-200 ease-ios hover:border-accent hover:text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${pressable}`}
-        >
-          <Plus size={18} strokeWidth={1.75} />
-          <span className="text-[15px] font-medium">Add a row</span>
-        </button>
       </div>
 
       {collection.role === 'owner' && (
         <div className="pt-2">
-          <Button variant="danger" onClick={() => void remove()}>
+          <Button variant="danger" onClick={() => setConfirmingDelete(true)}>
             <Trash01 size={16} strokeWidth={1.75} />
             Delete this collection
           </Button>
         </div>
+      )}
+
+      {/* Both ways of putting something in this collection, off one button. The
+          two are a single decision — what am I adding? — so they are one menu
+          rather than a row of controls spread down the page, and neither takes
+          up a full-width band of dashed outline to sit there doing nothing. */}
+      <Fab
+        label="Add to this collection"
+        onClick={() => setMenuOpen((open) => !open)}
+        expanded={menuOpen}
+      >
+        {menuOpen && (
+          <>
+            <FabAction label="Add a widget" onClick={startWidget}>
+              <AlignLeft size={18} strokeWidth={1.75} />
+            </FabAction>
+            <FabAction label="Add a row" onClick={() => void newRow()}>
+              <Rows03 size={18} strokeWidth={1.75} />
+            </FabAction>
+          </>
+        )}
+      </Fab>
+
+      <Modal
+        open={confirmingDelete}
+        onClose={() => (deleting ? undefined : setConfirmingDelete(false))}
+        title="Delete this collection?"
+      >
+        <div className="space-y-4 flex flex-col gap-6">
+          <p className="text-[15px] text-text">
+            <strong className="font-medium text-text-h">
+              {collection.title || 'Untitled collection'}
+            </strong>{' '}
+            and everything in it will be gone. This cannot be undone.
+          </p>
+
+          <div className="flex justify-end gap-3">
+            <Button
+              variant="secondary"
+              onClick={() => setConfirmingDelete(false)}
+              disabled={deleting}
+            >
+              Keep it
+            </Button>
+            <Button
+              variant="danger"
+              onClick={() => void remove()}
+              disabled={deleting}
+            >
+              <Trash01 size={16} strokeWidth={1.75} />
+              {deleting ? 'Deleting…' : 'Delete it'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      <RowPicker
+        open={choosing}
+        collection={collection}
+        counts={countsPerRow}
+        onPick={(rowId) => {
+          setChoosing(false)
+          setAddingTo(rowId)
+        }}
+        onClose={() => setChoosing(false)}
+      />
+
+      <WidgetChooser
+        open={addingTo !== null}
+        busy={addingWidget}
+        onChoose={(type) => void addWidgetTo(type)}
+        onClose={() => setAddingTo(null)}
+      />
+
+      {addError && (
+        <p role="alert" className="fixed right-5 bottom-[10.5rem] z-20 max-w-[16rem] rounded-control bg-surface px-4 py-3 text-[14px] text-danger shadow-float lg:right-8 lg:bottom-28">
+          {addError}
+        </p>
       )}
     </section>
   )

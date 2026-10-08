@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { X } from '@untitledui/icons/X'
 import Avatar from './Avatar'
 import Button from './Button'
 import { ApiError } from '../lib/api'
@@ -86,6 +87,10 @@ function SuggestionCard({ suggestion }: { suggestion: Suggestion }) {
 export default function SuggestedFriends() {
   const [state, setState] = useState<State>({ status: 'loading' })
   const [attempt, setAttempt] = useState(0)
+  // Closed means gone, and it stays gone for this visit: the heading goes with
+  // it, so what is left is the profile and nothing to reopen it from. Nothing is
+  // remembered about the choice, so the next visit to the page brings it back.
+  const [closed, setClosed] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -108,16 +113,32 @@ export default function SuggestedFriends() {
     }
   }, [attempt])
 
+  // Below the hooks, because a hook that is skipped on the way out is a hook
+  // that changes order the next time the section comes back.
+  if (closed) return null
+
   return (
     <section aria-labelledby="suggested-friends-heading" className="space-y-3 text-left">
-      <h2
-        id="suggested-friends-heading"
-        className="text-[17px] font-semibold tracking-heading text-text-h"
-      >
-        People you may know
-      </h2>
+      <div className="flex items-center justify-between gap-3">
+        <h2
+          id="suggested-friends-heading"
+          className="text-[17px] font-semibold tracking-heading text-text-h"
+        >
+          People you may know
+        </h2>
 
-      {state.status === 'loading' && (
+        <button
+          type="button"
+          onClick={() => setClosed(true)}
+          aria-label="Hide people you may know"
+          title="Hide people you may know"
+          className={`grid size-7 shrink-0 place-items-center rounded-full text-text hover:bg-fill hover:text-text-h ${focusRing} ${pressable}`}
+        >
+          <X size={16} strokeWidth={1.75} />
+        </button>
+      </div>
+
+        {state.status === 'loading' && (
         <p role="status" className="text-[15px] text-text">
           Looking for people you might know…
         </p>
@@ -141,15 +162,17 @@ export default function SuggestedFriends() {
       )}
 
       {state.status === 'ready' &&
-        // Everybody you know already, or nobody has signed up yet. Either way
-        // there is nothing to put here, so the heading goes too.
+        // Everybody you know already, or nobody has signed up yet — either way
+        // there is nothing to put under the heading.
         (state.suggestions.length === 0 ? (
           <p className="text-[15px] text-text">Nobody new to meet yet.</p>
         ) : (
           /* One row that runs off the edge. Ten strangers are too many to wrap
              onto a second line and push the crumbs below them down the page, and
-             the cut-off card is itself the hint that there are more. */
-          <ul className="scrollbar-hidden -mx-1 flex snap-x snap-mandatory gap-2 overflow-x-auto px-1 pb-1">
+             the cut-off card is itself the hint that there are more. fade-edges
+             softens both cuts so the row dissolves into the page instead of being
+             sliced off at the boundary. */
+          <ul className="scrollbar-hidden fade-edges -mx-1 flex snap-x snap-mandatory gap-2 overflow-x-auto px-1 pb-1">
             {state.suggestions.map((suggestion) => (
               <SuggestionCard key={suggestion.id} suggestion={suggestion} />
             ))}

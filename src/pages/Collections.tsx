@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus } from '@untitledui/icons/Plus'
 import FolderCard from '../components/FolderCard'
 import Chip from '../components/Chip'
+import Fab from '../components/Fab'
 import { ApiError } from '../lib/api'
 import {
   createCollection,
@@ -145,25 +145,15 @@ export default function Collections() {
               <FolderCard collection={collection} />
             </li>
           ))}
-
-          {/* The last tile is the way to make another one, sitting in the grid
-              rather than off in a header. It opens an empty collection straight
-              away rather than a form to fill in first. */}
-          <li>
-            <button
-              type="button"
-              onClick={() => void create()}
-              disabled={creating}
-              className="flex h-full min-h-64 w-full flex-col items-center justify-center gap-1 rounded-card border-2 border-dashed border-inactive px-6 py-10 text-center text-text transition-colors duration-200 ease-ios focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent hover:border-accent hover:text-accent disabled:opacity-40"
-            >
-              <Plus size={34} strokeWidth={1.5} />
-              <span className="text-[14px] font-medium">
-                {creating ? 'Creating…' : 'New collection'}
-              </span>
-            </button>
-          </li>
         </ul>
       )}
+
+      {/* The same button the Crumbs page uses to add a photo, for the same
+          reason: making a new one is the one action on this page that is not
+          about something already here, so it belongs on the glass rather than
+          taking up a tile in the grid. It opens an empty collection straight
+          away rather than a form to fill in first. */}
+      <Fab label="New collection" onClick={() => void create()} disabled={creating} />
     </section>
   )
 }

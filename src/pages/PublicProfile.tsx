@@ -265,21 +265,23 @@ export default function PublicProfilePage() {
   const displayName = fullName(profile) || profile.username
 
   return (
-    <section className="space-y-6">
+    <section className="space-y-6 pt-10">
       <header className="flex flex-wrap items-start justify-between gap-6">
         <div className="flex items-center gap-4">
-          <div className="size-20 shrink-0 text-2xl">
+          <div className="size-36 shrink-0 text-2xl">
             <Avatar user={profile} />
           </div>
-          <div className="space-y-1 text-left">
-            <h1 className="text-[28px] font-semibold tracking-heading text-text-h">
+          {/* One block of text at four sizes, so it is set tight: the name's own
+              line-height at 48px would otherwise put a third of its height of
+              empty leading under it and drop the handle a whole line away. */}
+          <div className="text-left">
+            <h1 className="text-[32px] leading-[1.05] font-semibold tracking-heading text-text-h">
               {displayName}
             </h1>
-            <p className="text-[15px] text-text">
+            <p className="-mt-0.5 text-[20px] text-text">
               @{profile.username}
-              {profile.username !== displayName ? ` · ${displayName}` : ''}
             </p>
-            <p className="text-[14px] text-text">{joinedOn(profile.createdAt)}</p>
+            <p className="-mt-0.5 text-[14px] text-text">{joinedOn(profile.createdAt)}</p>
             {profile.friendsCount !== null &&
               (profile.isSelf ? (
                 <p className="text-[14px]">
@@ -308,9 +310,6 @@ export default function PublicProfilePage() {
             <>
               <ButtonLink to="/edit-profile" variant="outline">
                 Edit profile
-              </ButtonLink>
-              <ButtonLink to="/crumbs" variant="outline">
-                My crumbs
               </ButtonLink>
               <SignOut />
             </>

@@ -9,6 +9,7 @@ import {
   createCollectionSchema,
   DEFAULT_FILTERS,
   searchFiltersSchema,
+  upcomingSchema,
   widgetSchema,
 } from './collectionSchemas'
 import type {
@@ -18,6 +19,7 @@ import type {
   CreateCollectionInput,
   Pagination,
   SearchFilters,
+  Upcoming,
   Widget,
 } from './collectionSchemas'
 
@@ -58,14 +60,14 @@ export async function searchCollections(filters: SearchFilters): Promise<{
   return collectionListSchema.parse(data)
 }
 
-export async function fetchUpcoming(days = 30, limit = 10): Promise<{
-  collections: Collection[]
-  pagination: Pagination
-}> {
+// Open collections happening within `days` of today, soonest first. The server
+// caps the list rather than paging it, and answers with the date range it
+// searched, so this returns that range alongside the collections.
+export async function fetchUpcoming(days = 30, limit = 10): Promise<Upcoming> {
   const { data } = await api.get('/api/collections/upcoming', {
     params: { days, limit },
   })
-  return collectionListSchema.parse(data)
+  return upcomingSchema.parse(data)
 }
 
 export async function fetchCollection(id: string): Promise<{
@@ -132,9 +134,10 @@ export async function shareCollection(id: string, userId: string): Promise<Colle
   return collectionEnvelopeSchema.parse(data).collection
 }
 
-export async function unshareCollection(id: string, userId: string): Promise<Collection> {
-  const { data } = await api.delete(`/api/collections/${id}/collaborators/${userId}`)
-  return collectionEnvelopeSchema.parse(data).collection
+export async function unshareCollection(id: string, userId: string): Promise<void> {
+  // Answers with a message, not with the collection, so there is nothing to parse
+  // and callers must work out the new list of people themselves.
+  await api.delete(`/api/collections/${id}/collaborators/${userId}`)
 }
 
 export { DEFAULT_FILTERS, searchFiltersSchema }
