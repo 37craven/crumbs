@@ -24,6 +24,7 @@
   --radius-control: 16px;
 
   --shadow-float: var(--shadow-float-value);
+  --shadow-crumb: var(--shadow-crumb-value);
 
   --tracking-heading: -0.015em;
 
@@ -55,6 +56,13 @@
   /* Depth comes from white-on-grey layering, so the one shadow in the system
      is reserved for things that genuinely float over that layering. */
   --shadow-float-value: 0 8px 24px rgba(0, 0, 0, 0.1);
+
+  /* A crumb is a photograph on a flat canvas, and the canvas carries no depth of
+     its own — so without a shadow a white photo on light grey, or a black one on
+     near-black, has no edge at all. Two soft layers rather than one hard one: a
+     tight contact shadow where the photo meets the canvas, and a wide diffuse
+     one under it. */
+  --shadow-crumb-value: 0 2px 6px rgba(0, 0, 0, 0.08), 0 10px 24px rgba(0, 0, 0, 0.1);
 
   /* -apple-system first so Apple devices get real SF Pro; everyone else falls
      back to the bundled Inter Variable. */
@@ -104,6 +112,12 @@
     /* A shadow is invisible against a near-black canvas, so elevation in dark
        is carried entirely by the surface step. */
     --shadow-float-value: 0 8px 24px rgba(0, 0, 0, 0.4);
+
+    /* A crumb still needs an edge it can be seen by, and here the canvas is
+       darker than most photos. So the contact shadow is joined by a hairline of
+       light: a black photo then has a rim, and a white one still lifts off the
+       background. */
+    --shadow-crumb-value: 0 0 0 1px rgba(255, 255, 255, 0.1), 0 10px 28px rgba(0, 0, 0, 0.6);
   }
 }
 
@@ -118,6 +132,7 @@
   --success: #6fcb9b;
   --code-bg: #3a3a3c;
   --shadow-float-value: 0 8px 24px rgba(0, 0, 0, 0.4);
+  --shadow-crumb-value: 0 0 0 1px rgba(255, 255, 255, 0.1), 0 10px 28px rgba(0, 0, 0, 0.6);
 }
 
 /* --- Shape ---------------------------------------------------------------- */

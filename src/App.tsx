@@ -33,11 +33,15 @@ export default function App() {
       {/* pt keeps the first heading clear of the floating tab bar; pb clears that
           bar, which floats over the viewport rather than taking part in the flow.
           min-w-0 stops a wide child — the crumb canvas — from pushing the
-          column wider than its share instead of letting it shrink. */}
+          column wider than its share instead of letting it shrink.
+          flex-col is only on the canvas page, where the column has to be a
+          definite height for the canvas to fill what is left of it. That page
+          carries no padding of its own: the canvas is the page, so a gutter
+          above and below it would only frame nothing. */}
       <main
         className={
           fullWidth
-            ? 'min-w-0 flex-1 pt-4 pb-8'
+            ? 'flex min-w-0 flex-1 flex-col'
             : 'mx-auto min-w-0 w-full max-w-[1100px] flex-1 px-6 pt-6 pb-28 lg:pb-16'
         }
       >

@@ -52,10 +52,14 @@ export default function Crumbs() {
   }, [])
 
   return (
-    <section className="flex flex-col gap-6">
-      {/* Hidden rather than stacked: the canvas is the page, and a heading above
-          it would only push the photos down the viewport. */}
-      <h1 className="sr-only">Crumbs</h1>
+    <section className="relative flex min-h-0 flex-1 flex-col gap-4">
+      {/* Taken out of the flow, so the canvas fills the page and this sits on
+          top of it. In the flow it was a band of page background above the
+          photos with nothing in it, and it also stole height the canvas could
+          have used. pointer-events-none keeps the pan gesture underneath it. */}
+      <h1 className="pointer-events-none absolute top-0 left-4 z-10 mt-4 text-[28px] font-semibold tracking-heading text-text-h lg:left-6">
+        Crumbs
+      </h1>
 
       {loadError && (
         <p role="alert" className="text-[15px] text-danger">

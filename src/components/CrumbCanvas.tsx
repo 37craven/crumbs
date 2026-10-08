@@ -119,7 +119,10 @@ export default function CrumbCanvas({
             // hundreds of tiles, and 20px is at the edge of where a superellipse
             // reads as different from an arc. index.css upgrades this to a true
             // squircle where the browser can draw one.
-            className="absolute overflow-hidden rounded-media"
+            // A photograph on a flat canvas has no edge of its own, so every tile carries
+            // the crumb shadow: a white photo on light grey and a black one on
+            // near-black would otherwise have nothing to read against.
+            className="absolute overflow-hidden rounded-media shadow-crumb"
             style={{ left, top, width: tile, height: tile }}
           >
             <button
@@ -325,20 +328,28 @@ export default function CrumbCanvas({
   }
 
   return (
-    <div className="space-y-3">
-      <div className="relative left-1/2 w-screen -translate-x-1/2">
+    // Two elements, not one. The outer is the page column's own width and is
+    // what the Recenter button is positioned against; the inner is the one that
+    // runs the full width of the window. Anchoring the button to the full-bleed
+    // element instead would put it past the right edge of the screen, since that
+    // element is centred on the column and therefore overhangs on both sides.
+    <div className="relative flex min-h-0 flex-1 flex-col">
+      <div className="relative left-1/2 flex min-h-0 flex-1 w-screen -translate-x-1/2">
         <div
           ref={viewportRef}
           role="region"
           aria-label="Crumbs canvas"
-          aria-describedby="crumb-canvas-hint"
           tabIndex={0}
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
           onPointerUp={endDrag}
           onPointerCancel={endDrag}
           onKeyDown={onKeyDown}
-          className="relative h-[75dvh] min-h-80 w-full cursor-grab touch-none overflow-hidden select-none focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent active:cursor-grabbing"
+          // The viewport's height is whatever the page column has left once the
+          // heading is above it, rather than a fixed slice of the screen: a canvas
+          // that stops short leaves a band of empty canvas below the photos, and
+          // there is nothing to put there.
+          className="relative h-full min-h-80 w-full cursor-grab touch-none overflow-hidden select-none focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent active:cursor-grabbing"
         >
           <ul
             className="absolute top-0 left-0 will-change-transform"
@@ -355,20 +366,24 @@ export default function CrumbCanvas({
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <p id="crumb-canvas-hint" className="text-left text-[14px] text-text">
-          Drag to move around.
-          <span className="hidden [@media(hover:hover)]:inline">
-            {' '}
-            Arrow keys work too, and Home goes back to the start.
-          </span>
-        </p>
-        {crumbs.length > 0 && (
-          <Button variant="secondary" size="sm" onClick={recenter} className="shrink-0">
-            Recenter
-          </Button>
-        )}
-      </div>
+      {/* Floating over the canvas rather than sitting under it, so putting it
+          back costs no page height. A sibling of the full-bleed element, so a
+          press on it never reaches the pan handlers.
+
+          bg-surface rather than the usual secondary fill: this button can land
+          on any photograph, and a plain fill with no edge vanishes against a
+          light one. A solid surface with a hairline and the float shadow keeps
+          the same quiet weight but stays readable over anything. */}
+      {crumbs.length > 0 && (
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={recenter}
+          className="absolute top-0 right-4 z-10 mt-4 shrink-0 bg-surface shadow-float"
+        >
+          Recenter
+        </Button>
+      )}
     </div>
   )
 }
