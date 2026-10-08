@@ -13,6 +13,7 @@ import NotFound from './pages/NotFound'
 import Profile from './pages/Profile'
 import Register from './pages/Register'
 import Search from './pages/Search'
+import UserProfile from './pages/UserProfile'
 
 const authPaths = ['/login', '/register', '/forgot-password']
 
@@ -43,6 +44,7 @@ export default function App() {
           <Route path="/crumbs" element={<RequireAuth><Crumbs /></RequireAuth>} />
           <Route path="/profile" element={<RequireAuth><Profile /></RequireAuth>} />
           <Route path="/edit-profile" element={<RequireAuth><EditProfile /></RequireAuth>} />
+          <Route path="/users/:username" element={<RequireAuth><UserProfile /></RequireAuth>} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </main>

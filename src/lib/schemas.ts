@@ -86,6 +86,30 @@ export const friendSchema = z.object({
 
 export type Friend = z.infer<typeof friendSchema>
 
+// How the signed-in user is connected to someone else.
+export const relationshipSchema = z.enum([
+  'friends',
+  'request_sent',
+  'request_received',
+  'none',
+  'self',
+])
+
+export type Relationship = z.infer<typeof relationshipSchema>
+
+// Another person's profile, as GET /api/users/:username returns it. Anyone
+// signed in sees the identity fields; friendsCount is null unless you are
+// friends with them (null means "not shown", which is not the same as zero).
+export const publicProfileSchema = friendSchema.extend({
+  createdAt: z.string(),
+  relationship: relationshipSchema,
+  requestId: z.string().nullish(),
+  isSelf: z.boolean(),
+  friendsCount: z.number().int().nonnegative().nullable(),
+})
+
+export type PublicProfile = z.infer<typeof publicProfileSchema>
+
 export const crumbRecordSchema = z.object({
   id: z.string(),
   imageUrl: z.string(),

@@ -173,16 +173,21 @@ export default function Profile() {
           <h2 id="suggested-friends-heading" className="my-0!">
             Suggested friends
           </h2>
-          <ul className="-mx-1 flex gap-4 overflow-x-auto px-1 pb-2">
+          <ul className="-mx-1 flex gap-4 overflow-x-auto px-1 pt-1 pb-2">
             {suggestions.map((person) => (
-              <li
-                key={person.id}
-                className="flex w-20 shrink-0 flex-col items-center gap-2 text-center"
-              >
-                <Avatar user={person} className="size-16 text-2xl" />
-                <span className="w-full truncate text-sm font-semibold text-text-h">
-                  @{person.username}
-                </span>
+              <li key={person.id} className="w-20 shrink-0">
+                <Link
+                  to={`/users/${encodeURIComponent(person.username)}`}
+                  className={`flex w-full flex-col items-center gap-2 rounded-2xl p-1 text-center no-underline hover:bg-accent-bg ${focusRing}`}
+                >
+                  <Avatar user={person} className="size-16 text-2xl" />
+                  <span
+                    title={`@${person.username}`}
+                    className="w-full truncate text-sm font-semibold text-text-h"
+                  >
+                    @{person.username}
+                  </span>
+                </Link>
               </li>
             ))}
           </ul>
