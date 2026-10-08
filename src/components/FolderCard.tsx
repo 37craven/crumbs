@@ -30,8 +30,24 @@ function fanRotation(collectionId: string, index: number): number {
 // fill sits #efefef on a #f2f2f2 canvas — too close to read as anything. The
 // cards have to be the lighter thing, which is the one piece of elevation the
 // system keeps a shadow for.
+
+// Held apart from TILE so a caller can choose a different one. A shadow and a
+// shadow-none in one class list would be decided by the order the stylesheet
+// happens to emit them in, not by the order they are written here, so the tile
+// is built with one shadow class and never two.
+const TILE_SHADOW = 'shadow-float'
+
+// No padding here: a picture wants the whole tile, and padding over the white
+// surface shows as a frame around the photo. The written tiles add their own,
+// below, because their text needs the inset.
+//
+// The hairline is what separates one tile from its neighbour now that the
+// padding is gone: at a fan's overlap they sit directly against each other, and
+// without an edge a pale photo and a white canvas read as one shape. Tailwind
+// has no xs/sm border width, so 1px is as thin as it goes — border-inactive
+// rather than a palette grey, so it follows the theme.
 const TILE =
-  'h-[130px] w-[30%] shrink-0 overflow-hidden rounded-control bg-surface p-2.5 text-left shadow-float ' +
+  'h-[130px] w-[30%] shrink-0 overflow-hidden rounded-control border border-inactive bg-surface text-left ' +
   'rotate-(--fan-rotate) transition-transform duration-200 ease-ios group-hover:rotate-0'
 
 function TileLabel({ children }: { children: React.ReactNode }) {
@@ -51,13 +67,16 @@ function FanTile({
   tile,
   rotation,
   overlap,
+  shadow,
 }: {
   tile: CardTile
   rotation: number
   overlap: boolean
+  /** The one shadow this tile gets. */
+  shadow: string
 }) {
   const style = { '--fan-rotate': `${rotation}deg` } as React.CSSProperties
-  const shape = `${TILE} ${overlap ? '-ml-[9%]' : ''}`
+  const shape = `${TILE} ${shadow} ${overlap ? '-ml-[9%]' : ''}`
 
   if (tile.type === 'image') {
     return (
@@ -74,7 +93,7 @@ function FanTile({
 
   if (tile.type === 'date') {
     return (
-      <div className={`${shape} flex flex-col gap-1`} style={style}>
+      <div className={`${shape} flex flex-col gap-1 p-2.5`} style={style}>
         <TileLabel>
           <Calendar size={12} strokeWidth={1.75} />
           Date
@@ -91,7 +110,7 @@ function FanTile({
 
   if (tile.type === 'note') {
     return (
-      <div className={`${shape} flex flex-col gap-1`} style={style}>
+      <div className={`${shape} flex flex-col gap-1 p-2.5`} style={style}>
         <TileLabel>
           <AlignLeft size={12} strokeWidth={1.75} />
           Notes
@@ -102,7 +121,7 @@ function FanTile({
   }
 
   return (
-    <div className={`${shape} flex flex-col gap-1`} style={style}>
+    <div className={`${shape} flex flex-col gap-1 p-2.5`} style={style}>
       {tile.image && (
         <img
           src={assetUrl(tile.image)}
@@ -177,7 +196,19 @@ function People({ owner, collaborators }: { owner: Person; collaborators: Person
  * these reads as a shelf of folders rather than as a grid of cards. Changing
  * anything about a collection happens on its own page.
  */
-export default function FolderCard({ collection }: { collection: Collection }) {
+export default function FolderCard({
+  collection,
+  tileShadow = TILE_SHADOW,
+}: {
+  collection: Collection
+  /**
+   * The shadow on the fanned tiles, so a caller can pick a quieter one. The
+   * collections page is a shelf of these and the wide floating shadow is what
+   * separates one folder from the next; the profile sets them in a tighter grid
+   * beside other sections, where that shadow is only a rim on every photo.
+   */
+  tileShadow?: string
+}) {
   const { summary } = collection
   const tiles = summary.tiles.slice(0, 4)
 
@@ -199,10 +230,13 @@ export default function FolderCard({ collection }: { collection: Collection }) {
               tile={tile}
               rotation={fanRotation(collection.id, index)}
               overlap={index > 0}
+              shadow={tileShadow}
             />
           ))
         ) : (
-          <div className="grid h-[130px] w-[40%] place-items-center rounded-control bg-surface text-[12px] text-text shadow-float">
+          <div
+            className={`grid h-[130px] w-[40%] place-items-center rounded-control border border-inactive bg-surface text-[12px] text-text ${tileShadow}`}
+          >
             Empty
           </div>
         )}

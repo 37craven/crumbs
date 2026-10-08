@@ -306,10 +306,10 @@ export default function PublicProfilePage() {
 
           {profile.isSelf && (
             <>
-              <ButtonLink to="/edit-profile" variant="secondary">
+              <ButtonLink to="/edit-profile" variant="outline">
                 Edit profile
               </ButtonLink>
-              <ButtonLink to="/crumbs" variant="secondary">
+              <ButtonLink to="/crumbs" variant="outline">
                 My crumbs
               </ButtonLink>
               <SignOut />
@@ -317,17 +317,6 @@ export default function PublicProfilePage() {
           )}
         </div>
       </header>
-
-      {profile.isSelf && (
-        <p className="text-left text-[15px] text-text">
-          <Link
-            to="/collections"
-            className="rounded text-accent underline underline-offset-4"
-          >
-            My collections
-          </Link>
-        </p>
-      )}
 
       {profile.isSelf && <SuggestedFriends />}
 
@@ -351,11 +340,21 @@ export default function PublicProfilePage() {
                 <ul className="grid grid-cols-3 gap-2 sm:grid-cols-5 lg:grid-cols-6">
                   {crumbs.slice(0, 12).map((crumb, index) => (
                     <li key={crumb.id}>
+                      {/* The shadow sits on the button rather than on the Squircle inside it: that
+                        one is clipped to its superellipse, which would take the
+                        shadow with it. The button is the same box, so it lands
+                        in the same place.
+
+                        A small one, not the crumb shadow the canvas uses: these
+                        are packed into a grid a few pixels apart, where a wide
+                        diffuse shadow would read as each photo floating free of
+                        its neighbours. Here it only has to give a white photo an
+                        edge against the grey canvas. */}
                       <button
                         type="button"
                         onClick={() => setSelected(crumb)}
                         aria-label={crumbLabel(crumb) || 'Open crumb'}
-                        className={`block w-full cursor-pointer transition duration-200 ease-ios hover:brightness-[0.97] ${focusRing}`}
+                        className={`block w-full cursor-pointer rounded-media shadow-sm transition duration-200 ease-ios hover:brightness-[0.97] ${focusRing}`}
                       >
                         {/* A gentle scatter, so the grid reads as a pile of
                             memories rather than a spreadsheet. The rotation is
@@ -406,7 +405,11 @@ export default function PublicProfilePage() {
               <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
                 {collections.map((collection) => (
                   <li key={collection.id}>
-                    <FolderCard collection={collection} />
+                    {/* A small shadow, not the floating one the collections page
+                        uses: these sit in a tight grid beside the crumb and
+                        suggestion sections, where a wide shadow is only a rim on
+                        every photo. Matches the crumb tiles above. */}
+                    <FolderCard collection={collection} tileShadow="shadow-sm" />
                   </li>
                 ))}
               </ul>

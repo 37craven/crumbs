@@ -4,6 +4,7 @@ import { LogOut01 } from '@untitledui/icons/LogOut01'
 import { ApiError } from '../lib/api'
 import { useAuth } from '../hooks/useAuth'
 import { focusRing, pressable } from '../lib/ui'
+import Button from './Button'
 
 /**
  * The way out of the app. Lives in the sidebar so it is reachable from anywhere,
@@ -64,15 +65,18 @@ export default function SignOutButton({
 
   return (
     <div className="space-y-2">
-      <button
-        type="button"
+      {/* Outlined rather than filled, so it reads as a control without adding a
+          block to the profile, and in the danger colour because leaving is the
+          one action on the page that is not undoable. */}
+      <Button
+        variant="outline-danger"
         onClick={() => void signOut()}
         disabled={busy}
-        className={`inline-flex select-none items-center justify-center gap-2 rounded-control bg-fill px-4 py-2.5 text-[15px] font-medium text-text-h transition duration-200 ease-ios hover:brightness-[0.97] disabled:opacity-40 ${focusRing} ${pressable} ${className ?? ''}`}
+        className={className}
       >
         <LogOut01 size={16} strokeWidth={1.75} />
         {busy ? 'Signing out…' : 'Sign out'}
-      </button>
+      </Button>
       <div aria-live="polite">
         {error && (
           <p role="alert" className="text-[15px] text-danger">

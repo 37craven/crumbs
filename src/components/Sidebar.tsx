@@ -68,8 +68,19 @@ export default function Sidebar() {
     <>
       {/* Desktop: a rail pinned to the left. It is a flex child rather than a
           fixed element so the content column beside it decides its own width,
-          and sticky so the rail stays put while the page scrolls under it. */}
-      <header className="sticky top-0 z-30 hidden h-svh w-60 shrink-0 flex-col gap-3 self-start px-4 py-5 lg:flex">
+          and sticky so the rail stays put while the page scrolls under it.
+          The frosted surface is the same one the bottom cluster sits on, so the
+          whole rail reads as one material rather than a cluster that happens to
+          be floating on a bare one — which also means the canvas, which runs
+          the full width of the window, passes behind it instead of showing
+          through.
+
+          The divider is a themed token, not a palette colour: a fixed one keeps
+          its light-mode value in dark mode and draws a white line down the edge
+          of a near-black rail. The surfaces are solid rather than frosted — the
+          blur only ever showed where the full-width canvas passed behind, and a
+          flat panel is one less thing to read as depth. */}
+      <header className="sticky top-0 z-30 hidden h-svh w-60 shrink-0 flex-col gap-3 self-start border-r-2 border-inactive bg-surface px-4 py-5 shadow-xl lg:flex">
         <Link
           to="/"
           className={`rounded-control px-3 py-2 text-[19px] font-semibold tracking-heading text-text-h no-underline ${focusRing} ${pressable}`}
@@ -104,7 +115,7 @@ export default function Sidebar() {
 
         {/* You, the theme, and the way out — the three things that are about this
             session rather than about a page. */}
-        <div className="flex items-center gap-1 rounded-full bg-surface/80 px-2 py-1.5 shadow-float backdrop-blur-xl">
+        <div className="flex items-center gap-1 rounded-full bg-surface px-2 py-1.5 shadow-float">
           {user ? (
             <Link
               to={profilePath(user.username)}
@@ -133,7 +144,7 @@ export default function Sidebar() {
         aria-label="Main"
         className="fixed inset-x-0 bottom-0 z-30 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] lg:hidden"
       >
-        <ul className="flex items-stretch justify-around gap-1 rounded-card bg-surface/80 px-2 py-2 shadow-float backdrop-blur-xl">
+        <ul className="flex items-stretch justify-around gap-1 rounded-card bg-surface px-2 py-2 shadow-float">
           {tabsMobile.map(({ to, label, icon }) => {
             const active = isActive(to)
 
