@@ -5,7 +5,9 @@ import CrumbViewer from '../components/CrumbViewer'
 import FriendsDialog from '../components/FriendsDialog'
 import { ApiError } from '../lib/api'
 import { crumbLabel, crumbSrc, fetchCrumbs } from '../lib/crumbs'
+import { fetchCollections } from '../lib/collections'
 import type { Crumb } from '../lib/schemas'
+import type { CollectionOption } from '../lib/collections'
 import { useAuth } from '../hooks/useAuth'
 import { fullName } from '../lib/user'
 
@@ -16,10 +18,6 @@ const linkClass = `text-accent underline underline-offset-4 ${focusRing}`
 
 const PREVIEW_COUNT = 6
 
-// No collections data exists in the app yet. Replace this with the real list
-// (each item needs an id and a name) once the Collections page provides it.
-const collections: { id: string; name: string }[] = []
-
 export default function Profile() {
   const { user, logout } = useAuth()
   const [signingOut, setSigningOut] = useState(false)
@@ -28,6 +26,21 @@ export default function Profile() {
   const [crumbs, setCrumbs] = useState<Crumb[] | null>(null)
   const [crumbsFailed, setCrumbsFailed] = useState(false)
   const [selected, setSelected] = useState<Crumb | null>(null)
+  const [collections, setCollections] = useState<CollectionOption[] | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    fetchCollections()
+      .then((list) => {
+        if (!cancelled) setCollections(list)
+      })
+      .catch(() => {
+        if (!cancelled) setCollections([])
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -51,8 +64,8 @@ export default function Profile() {
 
   const stats = [
     { label: 'Friends', value: user.friendsCount, onClick: () => setFriendsOpen(true) },
-    { label: 'Crumbs', value: crumbs ? crumbs.length : user.crumbsCount, to: '/crumbs' },
-    { label: 'Collections', value: user.collectionsCount, to: '/collections' },
+    { label: 'Crumbs', value: crumbs ? crumbs.length : 0, to: '/crumbs' },
+    { label: 'Collections', value: collections ? collections.length : 0, to: '/collections' },
   ]
 
   const handleSignOut = async () => {
@@ -192,17 +205,21 @@ export default function Profile() {
           </Link>
         </div>
 
-        {collections.length === 0 ? (
+        {collections === null ? (
+          <p role="status" className="text-text">
+            Loading collections…
+          </p>
+        ) : collections.length === 0 ? (
           <p className="text-text">No collections yet.</p>
         ) : (
           <ul className="divide-y divide-border rounded-lg border border-border">
-            {collections.map((collection) => (
+            {collections.slice(0, PREVIEW_COUNT).map((collection) => (
               <li key={collection.id}>
                 <Link
                   to="/collections"
                   className={`block px-4 py-3 font-heading text-text-h hover:bg-accent-bg ${focusRing}`}
                 >
-                  {collection.name}
+                  {collection.title || 'Untitled collection'}
                 </Link>
               </li>
             ))}

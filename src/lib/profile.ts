@@ -17,10 +17,12 @@ export function avatarSrc(url: string): string {
   return /^https?:\/\//.test(url) ? url : `${api.defaults.baseURL ?? ''}${url}`
 }
 
+// The server takes the photo as multipart/form-data in a field named "image".
 export async function uploadAvatar(image: Blob): Promise<User> {
-  const { data } = await api.put('/api/auth/avatar', image, {
-    headers: { 'Content-Type': image.type },
-  })
+  const body = new FormData()
+  body.append('image', image, 'avatar.jpg')
+
+  const { data } = await api.put('/api/auth/avatar', body)
   return userSchema.parse(data.user)
 }
 

@@ -18,8 +18,6 @@ export const userSchema = z.object({
   lastName: z.string().nullish(),
   avatarUrl: z.string().nullish(),
   friendsCount: z.number().int().nonnegative().optional(),
-  crumbsCount: z.number().int().nonnegative().optional(),
-  collectionsCount: z.number().int().nonnegative().optional(),
 })
 
 export type User = z.infer<typeof userSchema>
@@ -92,7 +90,18 @@ export const crumbRecordSchema = z.object({
   id: z.string(),
   imageUrl: z.string(),
   caption: z.string(),
+  collectionId: z.string().nullish(),
   createdAt: z.string(),
 })
 
 export type Crumb = z.infer<typeof crumbRecordSchema>
+
+// An upload can also file the photo into a collection. When the collection
+// copy is refused the crumb is still saved, and this says why.
+export const crumbUploadResponseSchema = z.object({
+  crumb: crumbRecordSchema,
+  filedInCollection: z.boolean(),
+  collectionCopyError: z.string().nullish(),
+})
+
+export type CrumbResult = z.infer<typeof crumbUploadResponseSchema>
