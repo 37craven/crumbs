@@ -13,9 +13,7 @@ export async function changePassword(input: PasswordChangeInput): Promise<void> 
   await api.post('/api/auth/password', { currentPassword, newPassword })
 }
 
-export function avatarSrc(url: string): string {
-  return /^https?:\/\//.test(url) ? url : `${api.defaults.baseURL ?? ''}${url}`
-}
+export { assetUrl as avatarSrc } from './api'
 
 // The server takes the photo as multipart/form-data in a field named "image".
 export async function uploadAvatar(image: Blob): Promise<User> {

@@ -4,7 +4,7 @@ import CrumbCanvas from '../components/CrumbCanvas'
 import CrumbUploader from '../components/CrumbUploader'
 import CrumbViewer from '../components/CrumbViewer'
 import { fetchCrumbs } from '../lib/crumbs'
-import { fetchCollections } from '../lib/collections'
+import { fetchCollectionOptions } from '../lib/collections'
 import type { Crumb } from '../lib/schemas'
 import type { CollectionOption } from '../lib/collections'
 
@@ -22,7 +22,7 @@ export default function Crumbs() {
   // stop the crumbs themselves from loading.
   useEffect(() => {
     let cancelled = false
-    fetchCollections()
+    fetchCollectionOptions()
       .then((list) => {
         if (!cancelled) setCollections(list)
       })
@@ -88,7 +88,11 @@ export default function Crumbs() {
         collections={collections}
         onUploaded={(crumb) => setCrumbs((current) => [crumb, ...current])}
       />
-      <CrumbViewer crumb={selected} onClose={() => setSelected(null)} />
+      <CrumbViewer
+        crumb={selected}
+        onClose={() => setSelected(null)}
+        onDeleted={(id) => setCrumbs((current) => current.filter((c) => c.id !== id))}
+      />
     </section>
   )
 }
