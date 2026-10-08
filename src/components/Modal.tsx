@@ -19,12 +19,20 @@ export default function Modal({
   open,
   onClose,
   title,
+  centered = false,
   children,
   className,
 }: {
   open: boolean
   onClose: () => void
   title: string
+  /**
+   * Keeps the panel in the middle of the screen at every width, instead of
+   * rising from the bottom edge on a phone. For a sheet that is an action you
+   * reach for; for something you are reading or filling in, a sheet on a phone
+   * pushes it under the thumb and hides the top of it.
+   */
+  centered?: boolean
   children: ReactNode
   className?: string
 }) {
@@ -48,7 +56,7 @@ export default function Modal({
         // it rather than on the panel is a dismiss.
         if (event.target === event.currentTarget) onClose()
       }}
-      className={`sheet max-h-[92svh] w-full max-w-none bg-transparent p-2 text-left text-text backdrop:bg-black/30 backdrop:backdrop-blur-xl sm:max-w-[34rem] ${className ?? ''}`}
+      className={`sheet max-h-[92svh] w-full max-w-none bg-transparent p-2 text-left text-text backdrop:bg-black/30 backdrop:backdrop-blur-xl sm:max-w-[34rem] ${centered ? 'centred' : ''} ${className ?? ''}`}
     >
       <Squircle
         radius={RADIUS.card}

@@ -109,8 +109,22 @@ export async function setCollectionStatus(id: string, status: CollectionStatus):
   return collectionEnvelopeSchema.parse(data).collection
 }
 
-export async function deleteCollection(id: string): Promise<void> {
-  await api.delete(`/api/collections/${id}`)
+/**
+ * `keepalive` lets the request outlive the page, which is what a discard needs
+ * when it is fired from `pagehide`: the document is already on its way out and
+ * axios has no setting for it, so that one case goes out on fetch directly.
+ */
+export async function deleteCollection(id: string, keepalive = false): Promise<void> {
+  if (!keepalive) {
+    await api.delete(`/api/collections/${id}`)
+    return
+  }
+
+  await fetch(`${api.defaults.baseURL ?? ''}/api/collections/${id}`, {
+    method: 'DELETE',
+    credentials: 'include',
+    keepalive: true,
+  })
 }
 
 export async function shareCollection(id: string, userId: string): Promise<Collection> {
@@ -128,12 +142,17 @@ export type { SearchFilters }
 
 // ---- Rows and widgets --------------------------------------------------------
 
+/**
+ * The row endpoints answer with the collection alone — a new row holds nothing,
+ * so there is nothing to send back about widgets — so this parses the envelope
+ * rather than the full collection-plus-widgets payload.
+ */
 export async function addRow(
   collectionId: string,
   name = '',
-): Promise<{ collection: Collection; widgets: unknown[] }> {
+): Promise<{ collection: Collection }> {
   const { data } = await api.post(`/api/collections/${collectionId}/rows`, { name })
-  return collectionPayloadSchema.parse(data)
+  return collectionEnvelopeSchema.parse(data)
 }
 
 export async function renameRow(

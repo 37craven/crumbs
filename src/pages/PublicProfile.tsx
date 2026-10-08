@@ -3,7 +3,8 @@ import { Link, useParams } from 'react-router-dom'
 import Avatar from '../components/Avatar'
 import FriendsDialog from '../components/FriendsDialog'
 import CrumbViewer from '../components/CrumbViewer'
-import CollectionCard from '../components/CollectionCard'
+import FolderCard from '../components/FolderCard'
+import SignOutButton from '../components/SignOutButton'
 import { ApiError } from '../lib/api'
 import { crumbLabel, crumbSrc } from '../lib/crumbs'
 import { fullName } from '../lib/user'
@@ -19,7 +20,6 @@ import {
 import type { PublicProfile, Relationship } from '../lib/people'
 import type { Crumb } from '../lib/schemas'
 import type { Collection } from '../lib/collectionSchemas'
-import { useAuth } from '../hooks/useAuth'
 import Button, { ButtonLink } from '../components/Button'
 import Squircle from '../components/Squircle'
 import { focusRing, RADIUS } from '../lib/ui'
@@ -147,39 +147,11 @@ function FriendActions({
   )
 }
 
-// Only rendered on your own profile, where it is the way out of the app.
+// Only rendered on your own profile, where it is the way out of the app. The
+// sidebar carries the same button, so this is the second way in rather than the
+// only one.
 function SignOut() {
-  const { logout } = useAuth()
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  const signOut = async () => {
-    setBusy(true)
-    setError(null)
-    try {
-      await logout()
-    } catch (err) {
-      setError(
-        err instanceof ApiError ? err.message : 'Could not sign you out. Try again.',
-      )
-      setBusy(false)
-    }
-  }
-
-  return (
-    <div className="space-y-2">
-      <Button variant="secondary" onClick={() => void signOut()} disabled={busy}>
-        {busy ? 'Signing out…' : 'Sign out'}
-      </Button>
-      <div aria-live="polite">
-        {error && (
-          <p role="alert" className="text-[15px] text-danger">
-            {error}
-          </p>
-        )}
-      </div>
-    </div>
-  )
+  return <SignOutButton variant="button" />
 }
 
 export default function PublicProfilePage() {
@@ -428,10 +400,10 @@ export default function PublicProfilePage() {
                 {profile.isSelf ? 'No collections yet.' : 'Nothing shared with you.'}
               </p>
             ) : (
-              <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
                 {collections.map((collection) => (
                   <li key={collection.id}>
-                    <CollectionCard collection={collection} />
+                    <FolderCard collection={collection} />
                   </li>
                 ))}
               </ul>

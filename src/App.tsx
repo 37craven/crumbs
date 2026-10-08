@@ -9,7 +9,7 @@ import EditProfile from './pages/EditProfile'
 import ForgotPassword from './pages/ForgotPassword'
 import Home from './pages/Home'
 import Login from './pages/Login'
-import Navbar from './components/Navbar'
+import Sidebar from './components/Sidebar'
 import NotFound from './pages/NotFound'
 import OwnProfile from './pages/OwnProfile'
 import PublicProfile from './pages/PublicProfile'
@@ -25,21 +25,20 @@ export default function App() {
   const fullWidth = pathname === '/crumbs'
 
   return (
-    <div
-      className={
-        fullWidth
-          ? 'flex min-h-svh w-full flex-col'
-          : 'mx-auto flex min-h-svh w-full max-w-[1100px] flex-col px-6'
-      }
-    >
-      <Navbar />
+    // A row, not a column: the rail is the first flex child and takes its own
+    // width, and the page column takes what is left.
+    <div className="flex min-h-svh w-full">
+      <Sidebar />
 
-      {/* pt keeps the first heading clear of the floating nav pill; pb clears the
-          mobile tab bar, which floats over the viewport rather than taking part
-          in the flow. */}
+      {/* pt keeps the first heading clear of the floating tab bar; pb clears that
+          bar, which floats over the viewport rather than taking part in the flow.
+          min-w-0 stops a wide child — the crumb canvas — from pushing the
+          column wider than its share instead of letting it shrink. */}
       <main
         className={
-          fullWidth ? 'w-full flex-1 pt-4 pb-8' : 'flex-1 pt-6 pb-28 lg:pb-16'
+          fullWidth
+            ? 'min-w-0 flex-1 pt-4 pb-8'
+            : 'mx-auto min-w-0 w-full max-w-[1100px] flex-1 px-6 pt-6 pb-28 lg:pb-16'
         }
       >
         <Routes>

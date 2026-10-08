@@ -1,6 +1,4 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import CollectionCard from '../components/CollectionCard'
-import PersonRow from '../components/PersonRow'
 import { ApiError } from '../lib/api'
 import { DEFAULT_FILTERS, searchCollections } from '../lib/collections'
 import { searchPeople } from '../lib/people'
@@ -13,8 +11,6 @@ import {
   WIDGET_TYPES,
 } from '../lib/collectionSchemas'
 import type {
-  Collection,
-  Pagination,
   Scope,
   SearchFilters,
   Sort,
@@ -23,11 +19,10 @@ import type {
 import Button from '../components/Button'
 import Card from '../components/Card'
 import Chip from '../components/Chip'
-import Field from '../components/Field'
 import { focusRing } from '../lib/ui'
 
 const selectClass =
-  'w-full rounded-control bg-fill px-4 py-2.5 text-[15px] text-text-h outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent'
+  'rounded-full bg-fill px-4 py-2 text-[14px] text-text-h outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent'
 
 const SCOPE_LABELS: Record<Scope, string> = {
   all: 'Everything',
@@ -102,9 +97,6 @@ function Toggles<T extends string>({
 
 export default function Search() {
   const [filters, setFilters] = useState<SearchFilters>(DEFAULT_FILTERS)
-  const [results, setResults] = useState<Collection[] | null>(null)
-  const [pagination, setPagination] = useState<Pagination | null>(null)
-  const [people, setPeople] = useState<SearchHit[]>([])
   const [collectionError, setCollectionError] = useState<string | null>(null)
   const [peopleError, setPeopleError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -120,8 +112,8 @@ export default function Search() {
 
     setBusy(true)
 
-    // Settled separately: a failing people search must not blank out the
-    // collections, and the other way round.
+    // Settled separately: a failing people search must not be reported as a
+    // failed collection search, and the other way round.
     const [collectionsOutcome, peopleOutcome] = await Promise.allSettled([
       searchCollections(next),
       lookForPeople ? searchPeople(term) : Promise.resolve([] as SearchHit[]),
@@ -131,31 +123,24 @@ export default function Search() {
     if (runId.current !== id) return
 
     if (collectionsOutcome.status === 'fulfilled') {
-      setResults(collectionsOutcome.value.collections)
-      setPagination(collectionsOutcome.value.pagination)
       setCollectionError(null)
     } else {
       const err = collectionsOutcome.reason
       setCollectionError(
         err instanceof ApiError ? err.message : 'Could not search collections.',
       )
-      setResults([])
-      setPagination(null)
     }
 
     if (lookForPeople) {
       if (peopleOutcome.status === 'fulfilled') {
-        setPeople(peopleOutcome.value)
         setPeopleError(null)
       } else {
         const err = peopleOutcome.reason
         setPeopleError(
           err instanceof ApiError ? err.message : 'Could not search people.',
         )
-        setPeople([])
       }
     } else {
-      setPeople([])
       setPeopleError(null)
     }
 
@@ -171,8 +156,6 @@ export default function Search() {
   const set = <K extends keyof SearchFilters>(key: K, value: SearchFilters[K]) =>
     setFilters((current) => ({ ...current, [key]: value, page: 1 }))
 
-  const goToPage = (page: number) => setFilters((current) => ({ ...current, page }))
-
   const term = filters.q.trim()
   const peopleRequested = term.length >= PEOPLE_MIN && term.length <= PEOPLE_MAX
   const activeFilterCount =
@@ -181,112 +164,167 @@ export default function Search() {
     filters.has.length +
     (filters.sort !== 'recent' ? 1 : 0)
 
+  // With nothing typed and nothing narrowed, the bar is the whole page: it sits
+  // on its own in the middle of the space rather than crowding the top of a
+  // list of everything. The moment anything is entered the header collapses back
+  // to the top and the results take over.
+  const idle =
+    term.length === 0 &&
+    activeFilterCount === 0 &&
+    filters.dateFrom === '' &&
+    filters.dateTo === ''
+
+  // The extra narrowings live in a popover, so — unlike a disclosure sitting in
+  // the flow — it has to be dismissed deliberately: on Escape, or on a click
+  // anywhere else. `open` is mirrored into state because a <details> toggling is
+  // not a React update, and without it the listeners below would only ever be
+  // attached on a render that happened to find the menu shut.
+  const filterMenu = useRef<HTMLDetailsElement>(null)
+  const [filtersOpen, setFiltersOpen] = useState(false)
+
+  useEffect(() => {
+    const menu = filterMenu.current
+    if (!menu || !filtersOpen) return
+
+    const close = () => {
+      menu.open = false
+    }
+    const onPointerDown = (event: PointerEvent) => {
+      if (!menu.contains(event.target as Node)) close()
+    }
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return
+      close()
+      menu.querySelector('summary')?.focus()
+    }
+
+    document.addEventListener('pointerdown', onPointerDown)
+    document.addEventListener('keydown', onKeyDown)
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown)
+      document.removeEventListener('keydown', onKeyDown)
+    }
+  }, [filtersOpen])
+
   return (
     <section className="space-y-6">
-      <h1 className="text-[28px] font-semibold tracking-heading text-text-h">Search</h1>
+      <header
+        className={`mx-auto flex w-full max-w-[900px] flex-col items-center gap-3 text-center ${
+          idle ? 'min-h-[46svh] justify-center' : 'pb-2'
+        }`}
+      >
+        <h1 className="text-[28px] font-semibold tracking-heading text-text-h">Search</h1>
 
-      {/* One box for everything. Collections search every word in a collection;
-          people search usernames. Both run off this same query. */}
-      <div className="text-left">
-        <Field
-          label="Search collections and people"
-          type="search"
-          value={filters.q}
-          onChange={(event) => set('q', event.target.value)}
-          placeholder="trip budget, or a username"
-          autoComplete="off"
-        />
-        <p className="mt-1.5 text-[13px] text-text">
-          {peopleRequested
-            ? 'Every word must appear in a collection. People are matched on username.'
-            : term.length > PEOPLE_MAX
-              ? `Usernames are at most ${PEOPLE_MAX} characters, so only collections are searched.`
-              : `Leave this empty to browse collections. Type ${PEOPLE_MIN} or more characters to find people.`}
-        </p>
-      </div>
-
-      {/* These narrow the collections half only, which is why they are tucked
-          away and labelled as such. */}
-      <Card className="p-0">
-        <details>
-        <summary
-          className={`cursor-pointer px-5 py-4 text-[15px] font-medium text-text-h ${focusRing}`}
-        >
-          Filters for collections
-          {activeFilterCount > 0 && (
-            <span className="ml-2 text-[14px] text-text">({activeFilterCount} on)</span>
-          )}
-        </summary>
-
-        <div className="space-y-4 px-5 pb-5">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-1.5">
-              <label htmlFor="search-scope" className="text-[13px] font-medium text-text-h">
-                Whose
-              </label>
-              <select
-                id="search-scope"
-                value={filters.scope}
-                onChange={(event) => set('scope', event.target.value as Scope)}
-                className={selectClass}
-              >
-                {SCOPES.map((scope) => (
-                  <option key={scope} value={scope}>
-                    {SCOPE_LABELS[scope]}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="space-y-1.5">
-              <label htmlFor="search-sort" className="text-[13px] font-medium text-text-h">
-                Sort by
-              </label>
-              <select
-                id="search-sort"
-                value={filters.sort}
-                onChange={(event) => set('sort', event.target.value as Sort)}
-                className={selectClass}
-              >
-                {SORT_OPTIONS.map((sort) => (
-                  <option key={sort} value={sort}>
-                    {SORT_LABELS[sort]}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          <Toggles
-            legend="Status"
-            options={COLLECTION_STATUSES.filter((status) => status !== 'new')}
-            selected={filters.status}
-            onChange={(next) => set('status', next)}
-            labels={STATUS_LABELS}
+        {/* One box for everything, and the only thing on the page until it is
+            used. Collections search every word in a collection; people search
+            usernames. Both run off this same query. */}
+        <div className="w-full">
+          <label htmlFor="search-q" className="sr-only">
+            Search collections and people
+          </label>
+          <input
+            id="search-q"
+            type="search"
+            value={filters.q}
+            onChange={(event) => set('q', event.target.value)}
+            placeholder="trip budget, or a username"
+            autoComplete="off"
+            className="w-full rounded-full bg-surface px-7 py-4 text-[18px] text-text-h shadow-float outline-none placeholder:text-inactive focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
           />
-
-          <Toggles
-            legend="Contains"
-            options={WIDGET_TYPES}
-            selected={filters.has}
-            onChange={(next) => set('has', next)}
-            labels={HAS_LABELS}
-          />
-
-          <div className="flex flex-wrap gap-3">
-            <Button
-              variant="secondary"
-              onClick={() => setFilters(DEFAULT_FILTERS)}
-            >
-              Clear filters
-            </Button>
-          </div>
+          <p className="mt-3 text-[13px] text-text">
+            {peopleRequested
+              ? 'Every word must appear in a collection. People are matched on username.'
+              : term.length > PEOPLE_MAX
+                ? `Usernames are at most ${PEOPLE_MAX} characters, so only collections are searched.`
+                : `Leave this empty to browse collections. Type ${PEOPLE_MIN} or more characters to find people.`}
+          </p>
         </div>
-        </details>
-      </Card>
+
+        {/* The two narrowings that matter most sit out in the open under the bar;
+            the rest stay tucked away behind the summary. */}
+        <div className="flex flex-wrap items-center justify-center gap-2">
+          <label htmlFor="search-scope" className="sr-only">
+            Whose collections
+          </label>
+          <select
+            id="search-scope"
+            value={filters.scope}
+            onChange={(event) => set('scope', event.target.value as Scope)}
+            className={selectClass}
+          >
+            {SCOPES.map((scope) => (
+              <option key={scope} value={scope}>
+                {SCOPE_LABELS[scope]}
+              </option>
+            ))}
+          </select>
+
+          <details
+            ref={filterMenu}
+            className="group relative"
+            onToggle={(event) => setFiltersOpen(event.currentTarget.open)}
+          >
+            <summary
+              className={`flex cursor-pointer list-none items-center gap-1.5 rounded-full bg-fill px-4 py-2 text-[14px] text-text-h ${focusRing}`}
+            >
+              Filters
+              {activeFilterCount > 0 && (
+                <span className="rounded-full bg-accent px-2 py-0.5 text-[12px] font-medium text-on-accent">
+                  {activeFilterCount}
+                </span>
+              )}
+            </summary>
+
+            <Card className="absolute top-full left-1/2 z-10 mt-2 w-[min(30rem,90vw)] -translate-x-1/2">
+              <div className="space-y-4">
+                <div className="space-y-1.5">
+                  <label htmlFor="search-sort" className="text-[13px] font-medium text-text-h">
+                    Sort by
+                  </label>
+                  <select
+                    id="search-sort"
+                    value={filters.sort}
+                    onChange={(event) => set('sort', event.target.value as Sort)}
+                    className={`${selectClass} w-full`}
+                  >
+                    {SORT_OPTIONS.map((sort) => (
+                      <option key={sort} value={sort}>
+                        {SORT_LABELS[sort]}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <Toggles
+                  legend="Status"
+                  options={COLLECTION_STATUSES.filter((status) => status !== 'new')}
+                  selected={filters.status}
+                  onChange={(next) => set('status', next)}
+                  labels={STATUS_LABELS}
+                />
+
+                <Toggles
+                  legend="Contains"
+                  options={WIDGET_TYPES}
+                  selected={filters.has}
+                  onChange={(next) => set('has', next)}
+                  labels={HAS_LABELS}
+                />
+
+                <Button
+                  variant="secondary"
+                  onClick={() => setFilters(DEFAULT_FILTERS)}
+                >
+                  Clear filters
+                </Button>
+              </div>
+            </Card>
+          </details>
+        </div>
+      </header>
 
       {busy && (
-        <p role="status" className="text-[15px] text-text">
+        <p role="status" className="text-center text-[15px] text-text">
           Searching…
         </p>
       )}
@@ -297,87 +335,11 @@ export default function Search() {
         </p>
       )}
 
-      <section aria-labelledby="collections-results" className="space-y-3">
-        <h2 id="collections-results" className="text-[17px] font-semibold tracking-heading text-text-h">
-          {pagination
-            ? `Collections (${pagination.total})`
-            : results === null
-              ? 'Collections'
-              : `Collections (${results.length})`}
-        </h2>
-
-        {results === null ? (
-          <p className="text-[15px] text-text">Loading…</p>
-        ) : results.length === 0 ? (
-          <p className="text-[15px] text-text">
-            {term
-              ? 'No collections matched.'
-              : 'No collections yet. Start one from the Collections page.'}
-          </p>
-        ) : (
-          <>
-            <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-              {results.map((collection) => (
-                <li key={collection.id}>
-                  <CollectionCard collection={collection} />
-                </li>
-              ))}
-            </ul>
-
-            {pagination && pagination.totalPages > 1 && (
-              <nav aria-label="Collection pages" className="flex items-center justify-center gap-3">
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => goToPage(pagination.page - 1)}
-                  disabled={pagination.page <= 1}
-                >
-                  Previous
-                </Button>
-                <span className="text-[14px] text-text">
-                  Page {pagination.page} of {pagination.totalPages}
-                </span>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => goToPage(pagination.page + 1)}
-                  disabled={pagination.page >= pagination.totalPages}
-                >
-                  Next
-                </Button>
-              </nav>
-            )}
-          </>
-        )}
-      </section>
-
-      <section aria-labelledby="people-results" className="space-y-3">
-        <h2 id="people-results" className="text-[17px] font-semibold tracking-heading text-text-h">
-          {peopleRequested ? `People (${people.length})` : 'People'}
-        </h2>
-
-        {peopleError && (
-          <p role="alert" className="text-[15px] text-danger">
-            {peopleError}
-          </p>
-        )}
-
-        {!peopleRequested ? (
-          <p className="text-[15px] text-text">
-            Type at least {PEOPLE_MIN} characters to look for people by username.
-          </p>
-        ) : people.length === 0 ? (
-          <p className="text-[15px] text-text">No one with that username.</p>
-        ) : (
-          <Card className="p-0">
-            <ul>
-              {people.map((hit) => (
-                <PersonRow key={hit.id} hit={hit} />
-              ))}
-            </ul>
-          </Card>
-        )}
-      </section>
+      {peopleError && (
+        <p role="alert" className="text-[15px] text-danger">
+          {peopleError}
+        </p>
+      )}
     </section>
   )
 }
