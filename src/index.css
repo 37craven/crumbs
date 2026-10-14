@@ -22,6 +22,24 @@
   --radius-card: 30px;
   --radius-media: 20px;
   --radius-control: 16px;
+  /* Canvas tiles only. A crumb is the biggest shape on the screen and the one
+     seen most often, so it carries a radius well past what the rest of the app
+     uses; media stays at 20px for the small thumbnails where a bigger curve
+     would eat the picture.
+
+     Must stay equal to RADIUS.tile in lib/ui.ts. This value drives the curve
+     where the browser draws it natively, that one drives the clip-path
+     everywhere else — if they drift, the two browsers disagree.
+
+     At 80px this clamps to a full circle on the smallest tile a phone gets
+     (MIN_TILE is 120px, and a radius at or past half the box is a pill). Every
+     larger size keeps a curve. That is the intended look at the breakpoint
+     where two tiles fill the screen. */
+  --radius-tile: 80px;
+  /* The other two crumb surfaces. The canvas owns --radius-tile and generates no
+     utility for it, but the grid's shadow sits on a button outside the Squircle
+     inside it and has to trace the same curve, so this one needs a utility. */
+  --radius-grid: 28px;
 
   --shadow-float: var(--shadow-float-value);
   --shadow-crumb: var(--shadow-crumb-value);
@@ -162,8 +180,37 @@
   .rounded-3xl,
   .rounded-card,
   .rounded-media,
-  .rounded-control {
+  .rounded-control,
+  .rounded-grid {
     corner-shape: squircle;
+  }
+}
+
+/* The crumbs canvas is the one surface with an unbounded number of instances of
+   the same shape, so it cannot afford a Squircle each. Instead one path is
+   generated for the tile size and handed down through --tile-clip, and every
+   tile inherits it: a few hundred tiles cost one string, not a few hundred
+   resize listeners and path generations.
+
+   The two are mutually exclusive on purpose. A border-radius here would clip to
+   a circular arc, and clip-path intersects with whatever else clips the box —
+   and a superellipse bulges outside an arc of the same radius, so the arc would
+   win and the tile would stay round. Whichever the browser can draw natively
+   gets the box to itself.
+
+   The `none` fallback covers the first paint before React has measured the
+   canvas, and leaves a plain rectangle rather than an invalid declaration. */
+@supports (corner-shape: squircle) {
+  .canvas-tile-body {
+    overflow: hidden;
+    border-radius: var(--radius-tile);
+    corner-shape: squircle;
+  }
+}
+
+@supports not (corner-shape: squircle) {
+  .canvas-tile-body {
+    clip-path: var(--tile-clip, none);
   }
 }
 

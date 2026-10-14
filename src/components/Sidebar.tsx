@@ -120,7 +120,7 @@ export default function Sidebar() {
               <div className="size-9 shrink-0">
                 <Avatar user={user} />
               </div>
-              <span className="min-w-0 truncate text-[14px] font-medium text-text-h">
+              <span className="min-w-0 truncate text-[14px] font-medium text-text-h max-w-12">
                 {user.username}
               </span>
             </Link>

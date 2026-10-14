@@ -15,8 +15,9 @@ import { Trash01 } from '@untitledui/icons/Trash01'
 import type { Widget } from '../lib/collectionSchemas'
 import Button from './Button'
 import Card from './Card'
+import DateCircle from './DateCircle'
 import Modal from './Modal'
-import { tiltFor } from '../lib/dates'
+import { splitDate, tiltFor } from '../lib/dates'
 import { pressable, RADIUS } from '../lib/ui'
 
 const inputClass =
@@ -100,52 +101,6 @@ function GrowingTextarea({
       }}
       className={notesClass}
     />
-  )
-}
-
-// "March", "14" and "2026", read in UTC so a plain YYYY-MM-DD cannot slip a day.
-function splitDate(value: string | null | undefined): { month: string; day: string; year: string } {
-  if (!value) return { month: '', day: '', year: '' }
-  const date = new Date(`${value}T00:00:00Z`)
-  if (Number.isNaN(date.getTime())) return { month: '', day: '', year: '' }
-  const format = (options: Intl.DateTimeFormatOptions) =>
-    new Intl.DateTimeFormat(undefined, { ...options, timeZone: 'UTC' }).format(date)
-  return {
-    month: format({ month: 'long' }),
-    day: format({ day: 'numeric' }),
-    year: format({ year: 'numeric' }),
-  }
-}
-
-/**
- * The date, ringed in a red circle drawn by hand.
- *
- * A perfect circle would read as a border on the card and nothing more. This one
- * is not: the curve is uneven all the way round, and it overlaps itself where it
- * starts and ends, which is what a pen does when it comes back to where it
- * began. Inline SVG because a div can only be straight, skewed, or a rounded
- * rectangle — none of which is a ring drawn by a hand.
- *
- * `currentColor` so the red follows the theme instead of being a fixed value that
- * would go wrong in dark mode. Drawn at 1:1 with the viewBox where it is used at
- * its natural size, so "6" on the stroke is 6px on screen rather than 6 scaled
- * units.
- */
-function DateCircle() {
-  return (
-    <svg
-      viewBox="0 0 120 112"
-      aria-hidden="true"
-      className="pointer-events-none absolute inset-0 size-full text-danger"
-    >
-      <path
-        d="M60 6C94 5 112 28 113 57C114 85 92 108 60 106C28 104 8 84 9 56C10 29 27 7 56 5C60 5 63 5 65 6"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="6"
-        strokeLinecap="round"
-      />
-    </svg>
   )
 }
 

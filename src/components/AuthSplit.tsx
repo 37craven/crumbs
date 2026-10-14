@@ -74,10 +74,10 @@ export default function AuthSplit({
         }`}
       >
         <div className="w-full max-w-md space-y-5">
-          <h2 className="text-[30px] font-semibold tracking-heading text-on-accent">
+          <h2 className="text-[30px] font-semibold tracking-heading text-accent">
             {banner.headline}
           </h2>
-          <p className="text-[16px] leading-relaxed text-on-accent/80">{banner.body}</p>
+          <p className="text-[16px] leading-relaxed text-accent/80">{banner.body}</p>
         </div>
       </div>
     </div>

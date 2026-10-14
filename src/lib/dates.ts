@@ -30,6 +30,30 @@ export function formatDate(value: string): string {
 }
 
 /**
+ * A `YYYY-MM-DD` pulled into the three parts a calendar page is made of: the
+ * month across the top, the day in the middle, the year underneath. Read in UTC
+ * for the same reason `formatDate` does, and empty strings come back for
+ * anything missing or unreadable, so a caller asks whether the day is there
+ * instead of parsing the value a second time.
+ */
+export function splitDate(value: string | null | undefined): {
+  month: string
+  day: string
+  year: string
+} {
+  if (!value) return { month: '', day: '', year: '' }
+  const date = new Date(`${value}T00:00:00Z`)
+  if (Number.isNaN(date.getTime())) return { month: '', day: '', year: '' }
+  const format = (options: Intl.DateTimeFormatOptions) =>
+    new Intl.DateTimeFormat(undefined, { ...options, timeZone: 'UTC' }).format(date)
+  return {
+    month: format({ month: 'long' }),
+    day: format({ day: 'numeric' }),
+    year: format({ year: 'numeric' }),
+  }
+}
+
+/**
  * A steady per-id tilt in degrees, so a row of cards is scattered the same way
  * on every render and on every device. The tail of the id is used because the
  * front of it is a timestamp and never varies.

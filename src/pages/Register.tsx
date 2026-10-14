@@ -62,7 +62,7 @@ export default function Register() {
             Check your email
           </h1>
 
-          <Card className="space-y-4">
+          <Card className="space-y-4 gap-6 flex flex-col">
             <p className="text-[15px] text-text">
               {created.emailSent ? (
                 <>

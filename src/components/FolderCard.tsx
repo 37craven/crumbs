@@ -3,8 +3,9 @@ import { AlignLeft } from '@untitledui/icons/AlignLeft'
 import { Calendar } from '@untitledui/icons/Calendar'
 import { Link01 } from '@untitledui/icons/Link01'
 import Avatar from './Avatar'
+import DateCircle from './DateCircle'
 import { assetUrl } from '../lib/api'
-import { formatDate, whenLabel } from '../lib/dates'
+import { formatDate, splitDate, whenLabel } from '../lib/dates'
 import { profilePath } from '../lib/people'
 import { focusRing, hoverLift } from '../lib/ui'
 import type { CardTile, Collection, Person } from '../lib/collectionSchemas'
@@ -50,9 +51,22 @@ const TILE =
   'h-[130px] w-[30%] shrink-0 overflow-hidden rounded-control bg-surface text-left ' +
   'rotate-(--fan-rotate) transition-transform duration-200 ease-ios group-hover:rotate-0'
 
-function TileLabel({ children }: { children: React.ReactNode }) {
+function TileLabel({
+  children,
+  centered = false,
+}: {
+  children: React.ReactNode
+  /** The date tile lays its label out like the poster's, across the top of the
+   *  page rather than down the left of it. */
+  centered?: boolean
+}) {
   return (
-    <span className="flex items-center gap-1 text-[10px] font-medium tracking-wide text-text uppercase">
+    <span
+      className={
+        'flex min-w-0 items-center gap-1 text-[10px] font-medium tracking-wide text-text uppercase' +
+        (centered ? ' w-full justify-center' : '')
+      }
+    >
       {children}
     </span>
   )
@@ -92,18 +106,40 @@ function FanTile({
   }
 
   if (tile.type === 'date') {
+    // The same calendar page the poster draws — month across the top, the day
+    // ringed in the middle, the year underneath — at roughly half the size.
+    // Printing the date as one line of type would still say when the day is, but
+    // the tile is standing in for the card behind it, so it has to be the card's
+    // own shape and not a caption of it.
+    const { month, day, year } = splitDate(tile.date)
+    const relative = whenLabel(tile.daysUntil)
+
     return (
-      <div className={`${shape} flex flex-col gap-1 p-2.5`} style={style}>
-        <TileLabel>
+      <div
+        className={`${shape} flex flex-col items-center justify-center gap-1 p-2 text-center`}
+        style={style}
+      >
+        <TileLabel centered>
           <Calendar size={12} strokeWidth={1.75} />
-          Date
+          {/* September is the longest thing that goes up here and the tile is
+              narrow, so the month is the part that gives way. */}
+          <span className="min-w-0 truncate">{month || 'Date'}</span>
         </TileLabel>
-        <span className="text-[13px] leading-tight font-semibold text-text-h">
-          {formatDate(tile.date)}
+
+        {/* The ring sits behind the number rather than around it, so a one-digit
+            day and a two-digit day are both centred in the same circle. */}
+        <span className="relative grid h-[52px] w-[56px] place-items-center">
+          <DateCircle />
+          <span className="text-[36px] leading-none font-bold tracking-heading text-text-h">
+            {day}
+          </span>
         </span>
-        {tile.daysUntil != null && (
-          <span className="text-[11px] text-text">{whenLabel(tile.daysUntil)}</span>
-        )}
+
+        {year && <span className="text-[11px] leading-none text-text">{year}</span>}
+
+        {/* The one line the poster has no reason to carry. A shelf of folders is
+            read for how far off each day is, and a shelf has thumbnails. */}
+        {relative && <span className="text-[10px] leading-none text-text">{relative}</span>}
       </div>
     )
   }

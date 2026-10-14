@@ -73,7 +73,7 @@ export default function Avatar({
   ) : (
     <div
       aria-hidden="true"
-      className={`grid size-full select-none place-items-center rounded-full font-heading leading-none ${pastel(user.username)} ${className ?? ''} ${ring ? 'ring-2 ring-surface' : ''}`}
+      className={`grid size-full select-none place-items-center rounded-full font-heading leading-none  ${pastel(user.username)} ${className ?? ''} ${ring ? 'ring-2 ring-surface' : ''}`}
     >
       {(fullName(user) || user.username).charAt(0).toUpperCase()}
     </div>

@@ -269,7 +269,7 @@ export default function PublicProfilePage() {
       <header className="flex flex-wrap items-start justify-between gap-6">
         <div className="flex items-center gap-4">
           <div className="size-36 shrink-0 text-2xl">
-            <Avatar user={profile} />
+            <Avatar user={profile} className='!text-6xl' />
           </div>
           {/* One block of text at four sizes, so it is set tight: the name's own
               line-height at 48px would otherwise put a third of its height of
@@ -353,14 +353,18 @@ export default function PublicProfilePage() {
                         type="button"
                         onClick={() => setSelected(crumb)}
                         aria-label={crumbLabel(crumb) || 'Open crumb'}
-                        className={`block w-full cursor-pointer rounded-media shadow-sm transition duration-200 ease-ios hover:brightness-[0.97] ${focusRing}`}
+                        className={`block w-full cursor-pointer rounded-grid shadow-sm transition duration-200 ease-ios hover:brightness-[0.97] ${focusRing}`}
                       >
                         {/* A gentle scatter, so the grid reads as a pile of
                             memories rather than a spreadsheet. The rotation is
                             per-item and small enough that no two neighbours
                             share a tilt. */}
+                        {/* RADIUS.grid, between the canvas tile and the small
+                            thumbnails: at 3 columns on a phone these are about
+                            100px, so tile's 40px would be 40% of the width and
+                            read as a lozenge rather than a rounded square. */}
                         <Squircle
-                          radius={RADIUS.media}
+                          radius={RADIUS.grid}
                           className="overflow-hidden bg-fill"
                           style={{
                             transform: `rotate(${index % 3 === 1 ? -2.5 : index % 3 === 2 ? 2.5 : 0}deg)`,
