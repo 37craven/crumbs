@@ -104,7 +104,11 @@ export default function CrumbUploader({
       update(item.id, { status: 'uploading', error: null })
       try {
         const image = await resizeToFit(item.file)
-        const result = await uploadCrumb(image, item.caption, collectionId)
+        const filename =
+          image.type === 'image/jpeg'
+            ? `${item.file.name.replace(/\.[^./\\]+$/, '') || 'upload'}.jpg`
+            : item.file.name
+        const result = await uploadCrumb(image, item.caption, collectionId, filename)
         if (result.collectionCopyError) copyErrors.add(result.collectionCopyError)
         onUploaded(result.crumb)
         finished.add(item.id)
